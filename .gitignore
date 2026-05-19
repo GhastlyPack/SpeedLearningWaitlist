@@ -36,3 +36,5 @@ next-env.d.ts
 # reference assets (not part of the deployed app)
 referenceImages/
 SL_STYLE.txt
+SL_ICON.png
+SL_LOGO.png
