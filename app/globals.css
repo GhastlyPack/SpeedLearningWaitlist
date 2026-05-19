@@ -158,6 +158,30 @@ input {
   margin: 36px 0;
 }
 
+/* ---------- Bonus callout ---------- */
+.form-bonus {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.bonus-tag {
+  display: inline-block;
+  padding: 3px 7px;
+  background: var(--ax);
+  color: var(--bg);
+  border: 1px solid var(--ax);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.6px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
 /* ---------- Form ---------- */
 .form {
   display: flex;

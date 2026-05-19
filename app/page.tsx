@@ -31,6 +31,11 @@ export default function Home() {
             and an AI chat partner trained on every source.
           </p>
 
+          <div className="form-bonus">
+            <span className="bonus-tag">Bonus</span>
+            <span>First Volume free at launch.</span>
+          </div>
+
           <WaitlistForm />
 
           <div className="divider" />
