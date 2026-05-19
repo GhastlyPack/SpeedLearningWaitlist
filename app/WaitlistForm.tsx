@@ -22,7 +22,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function WaitlistForm() {
   const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState<string>("");
@@ -37,7 +36,6 @@ export default function WaitlistForm() {
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanFirst = firstName.trim();
-    const cleanLast = lastName.trim();
     const cleanEmail = email.trim().toLowerCase();
 
     if (!cleanFirst) {
@@ -64,13 +62,11 @@ export default function WaitlistForm() {
           waitlist_signed_up_at: nowIso,
           waitlist_source: "speedlearning.com",
         };
-        if (cleanLast) traits.last_name = cleanLast;
 
         window.cioanalytics.identify(cleanEmail, traits);
         window.cioanalytics.track("waitlist_signup", {
           source: "speedlearning.com",
           signed_up_at: nowIso,
-          has_last_name: Boolean(cleanLast),
         });
       } else if (process.env.NODE_ENV !== "production") {
         console.warn(
@@ -79,11 +75,8 @@ export default function WaitlistForm() {
       }
 
       setStatus("success");
-      setMessage(
-        `You're on the list, ${cleanFirst}. We'll be in touch.`
-      );
+      setMessage(`You're on the list, ${cleanFirst}. We'll be in touch.`);
       setFirstName("");
-      setLastName("");
       setEmail("");
     } catch {
       setStatus("error");
@@ -108,7 +101,7 @@ export default function WaitlistForm() {
           <input
             type="text"
             autoComplete="given-name"
-            placeholder="Alex"
+            placeholder="Gilfoyle"
             value={firstName}
             onChange={(e) => {
               setFirstName(e.target.value);
@@ -121,27 +114,12 @@ export default function WaitlistForm() {
         </label>
 
         <label className="field">
-          <span className="field-label">
-            Last name <span className="field-label-meta">· Optional</span>
-          </span>
-          <input
-            type="text"
-            autoComplete="family-name"
-            placeholder="Pell"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            disabled={locked}
-            aria-label="Last name (optional)"
-          />
-        </label>
-
-        <label className="field">
           <span className="field-label">Email</span>
           <input
             type="email"
             inputMode="email"
             autoComplete="email"
-            placeholder="you@domain.com"
+            placeholder="gilfoyle@piedpiper.com"
             value={email}
             onChange={(e) => {
               setEmail(e.target.value);
