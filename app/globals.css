@@ -185,22 +185,56 @@ input {
 /* ---------- Form ---------- */
 .form {
   display: flex;
-  gap: 0;
+  flex-direction: column;
   max-width: 520px;
   border: 1px solid var(--rule-hi);
   background: var(--card);
 }
 
-.form input[type="email"] {
-  flex: 1;
-  background: transparent;
-  border: 0;
-  padding: 14px 16px;
-  font-size: 14px;
-  outline: none;
+.field {
+  display: flex;
+  flex-direction: column;
+  padding: 11px 16px 13px;
+  cursor: text;
 }
 
-.form input[type="email"]::placeholder {
+.field + .field {
+  border-top: 1px solid var(--rule);
+}
+
+.field-label {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  margin-bottom: 4px;
+  transition: color 0.12s ease;
+}
+
+.field-label-meta {
+  color: var(--ink-mute);
+}
+
+.field:focus-within .field-label {
+  color: var(--ink);
+}
+
+.field input {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-size: 14px;
+  outline: none;
+  width: 100%;
+  color: var(--ink);
+}
+
+.field input::placeholder {
+  color: var(--ink-mute);
+}
+
+.field input:disabled {
   color: var(--ink-mute);
 }
 
@@ -209,10 +243,13 @@ input {
   color: var(--bg);
   font-size: 13px;
   font-weight: 500;
-  padding: 12px 22px;
+  padding: 14px 22px;
   border: 0;
+  border-top: 1px solid var(--rule-hi);
   transition: background 0.12s ease;
   white-space: nowrap;
+  text-align: center;
+  width: 100%;
 }
 
 .form button:hover:not(:disabled) {
@@ -298,11 +335,7 @@ input {
     grid-template-columns: 1fr;
     gap: 22px;
   }
-  .form {
-    flex-direction: column;
-  }
   .form button {
     padding: 14px 22px;
-    text-align: left;
   }
 }
