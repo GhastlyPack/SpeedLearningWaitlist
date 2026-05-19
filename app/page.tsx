@@ -60,7 +60,7 @@ export default function Home() {
               <h3>Pay per topic</h3>
               <p>
                 $50 to $500 by depth. No subscription. Earn free credits by
-                completing assessment quizzes.
+                inviting friends and completing assessment quizzes.
               </p>
             </div>
           </div>
