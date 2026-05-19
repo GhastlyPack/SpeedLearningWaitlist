@@ -60,6 +60,7 @@ export default function WaitlistForm() {
         const traits: Traits = {
           email: cleanEmail,
           first_name: cleanFirst,
+          waitlist: true,
           waitlist_signed_up_at: nowIso,
           waitlist_source: "speedlearning.com",
         };
