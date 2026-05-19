@@ -104,7 +104,7 @@ export default function WaitlistForm() {
         </button>
       </form>
       <div className={metaClass} aria-live="polite">
-        {message || "No spam. One email when it goes live."}
+        {message || "Early access, updates, and the occasional offer. Unsubscribe anytime."}
       </div>
     </div>
   );
