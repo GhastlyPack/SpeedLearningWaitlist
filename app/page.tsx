@@ -19,16 +19,16 @@ export default function Home() {
           </div>
 
           <h1>
-            Learn anything.
+            Learn anything in
             <br />
-            <span className="accent">We do the reading.</span>
+            <span className="accent">30 to 60 minutes.</span>
           </h1>
 
           <p className="lede">
-            Course gurus charge thousands to repackage what&apos;s already
-            published. SpeedLearning summarizes the originals &mdash; books,
-            papers, lectures, articles &mdash; and shapes them to how you
-            learn.
+            Type a topic. SpeedLearning pulls the top videos, articles, papers,
+            and transcripts on it &mdash; then synthesizes a complete library:
+            TLDR, full report with citations, slide deck, mind map, flashcards,
+            and an AI chat partner trained on every source.
           </p>
 
           <WaitlistForm />
@@ -37,24 +37,25 @@ export default function Home() {
 
           <div className="bullets">
             <div className="bullet">
-              <h3>Any topic</h3>
+              <h3>30 to 60 minutes</h3>
               <p>
-                Cohort retention, GLP-1 drugs, Constantinople 1453. If
-                someone&apos;s written about it, we&apos;ll read it for you.
+                From &ldquo;I want to learn X&rdquo; to a complete,
+                source-cited library. Runs in the background while you work.
               </p>
             </div>
             <div className="bullet">
-              <h3>How you learn</h3>
+              <h3>Eight ways to learn</h3>
               <p>
-                TLDR, executive summary, full report, slide deck, mind map.
-                Pick the format that fits your brain.
+                TLDR, executive summary, full report, slide deck, mind map,
+                flashcards, source list, and a chat partner that knows every
+                source.
               </p>
             </div>
             <div className="bullet">
-              <h3>Primary sources</h3>
+              <h3>Pay per topic</h3>
               <p>
-                Books, papers, lectures, articles. Citations included. Not
-                other gurus&apos; rewarmed courses.
+                $50 to $500 by depth. No subscription. Earn free credits by
+                completing assessment quizzes.
               </p>
             </div>
           </div>

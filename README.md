@@ -1,7 +1,8 @@
 # SpeedLearning Waitlist
 
-V1 landing page for [speedlearning.com](https://speedlearning.com). Email signup
-flows into Customer.io via the in-browser JS snippet.
+V1 landing page for [speedlearning.com](https://speedlearning.com). Email
+signup flows into Customer.io via the in-browser CDP / Data Pipelines snippet
+(`cioanalytics`).
 
 ## Stack
 
@@ -15,59 +16,53 @@ flows into Customer.io via the in-browser JS snippet.
 
 ```bash
 npm install
-cp .env.example .env.local   # fill in your CIO Site ID
 npm run dev
 ```
 
-Opens on http://localhost:3000.
-
-## Environment variables
-
-| Var | Required | Notes |
-| --- | --- | --- |
-| `NEXT_PUBLIC_CIO_SITE_ID` | yes (prod) | Customer.io workspace Site ID. Public, safe to expose to the browser. |
-| `NEXT_PUBLIC_CIO_REGION` | no | `us` (default) or `eu` — controls which CIO CDN the snippet pulls from. |
-
-Both are read by `app/layout.tsx`. If `NEXT_PUBLIC_CIO_SITE_ID` is unset, the
-snippet is not injected and the form will log a dev-mode warning on submit.
+Opens on http://localhost:3000. The CIO write key is baked into `app/layout.tsx`
+so local submissions hit the live workspace by default. Override with
+`NEXT_PUBLIC_CIO_WRITE_KEY` in `.env.local` if you want to point at a different
+workspace.
 
 ## Customer.io wiring
 
 On successful submit the client calls:
 
 ```js
-_cio.identify({
-  id: email,
+cioanalytics.identify(email, {
   email,
-  created_at: <unix>,
-  waitlist_signed_up_at: <unix>,
+  waitlist_signed_up_at: <ISO>,
   waitlist_source: "speedlearning.com",
 });
-_cio.track("waitlist_signup", { source: "speedlearning.com", signed_up_at: <unix> });
+cioanalytics.track("waitlist_signup", {
+  source: "speedlearning.com",
+  signed_up_at: <ISO>,
+});
 ```
 
 In Customer.io:
-- People will appear under the email as their `id`.
-- Create a segment on `waitlist_source = speedlearning.com` (or filter by the
+- People appear with the email as their `userId`.
+- Build a segment on `waitlist_source = speedlearning.com` (or filter by the
   `waitlist_signup` event) for the launch broadcast.
 
-## Deploy
+## Deploy (Vercel)
 
-1. Push to `GhastlyPack/SpeedLearningWaitlist`.
-2. Import the repo into Vercel (no build config needed — auto-detected as
-   Next.js).
-3. Add `NEXT_PUBLIC_CIO_SITE_ID` (and optionally `NEXT_PUBLIC_CIO_REGION`) to
-   Vercel → Settings → Environment Variables for **Production**, **Preview**,
-   **Development**.
-4. Add the `speedlearning.com` domain in Vercel → Settings → Domains.
-5. At GoDaddy, point DNS to Vercel:
-   - Apex (`speedlearning.com`): `A` record → `76.76.21.21`
-   - `www`: `CNAME` → `cname.vercel-dns.com.`
-   - Vercel will show the exact records to use; trust their UI over this README
-     if they differ.
+1. [vercel.com/new](https://vercel.com/new) → Import
+   `GhastlyPack/SpeedLearningWaitlist`.
+2. Settings:
+   - **Vercel Team**: a team where you have create-project permission
+     (the VAgents team appears to block creates — switch to your personal
+     account or another team).
+   - **Application Preset**: Next.js (not Other).
+   - **Root Directory**: `./`
+   - **Build / Output**: leave defaults.
+   - **Environment Variables**: none required for the default workspace.
+3. Settings → Domains → add `speedlearning.com` + `www.speedlearning.com`.
+4. At GoDaddy → DNS, follow what Vercel shows (typically `A 76.76.21.21` on the
+   apex and `CNAME cname.vercel-dns.com` on `www`).
 
 ## V2
 
-- Embed a video on the lander above the form.
-- Optional: server-side `/api/waitlist` fallback for users with ad blockers
-  that strip the CIO snippet.
+- Embed a product video above the form.
+- Optional server-side `/api/waitlist` fallback for users who block the CIO
+  snippet.

@@ -25,15 +25,21 @@ const serif = Newsreader({
   display: "swap",
 });
 
+// Customer.io CDP (Data Pipelines) write key. Public — exposed to the browser
+// by design. Override via NEXT_PUBLIC_CIO_WRITE_KEY in Vercel if it ever
+// rotates.
+const CIO_WRITE_KEY =
+  process.env.NEXT_PUBLIC_CIO_WRITE_KEY || "c53bf992a3f95d7fa03f";
+
 export const metadata: Metadata = {
-  title: "SpeedLearning — learn anything, free, from the greatest minds on earth",
+  title: "SpeedLearning — learn anything in 30 to 60 minutes",
   description:
-    "Stop paying course gurus thousands for what's already free. SpeedLearning summarizes any topic and presents it in the way you learn best. Join the waitlist.",
+    "Type a topic. SpeedLearning pulls the best videos, articles, and papers and synthesizes a complete learning library — TLDR, report, slide deck, mind map, flashcards, AI chat partner. Join the waitlist.",
   metadataBase: new URL("https://speedlearning.com"),
   openGraph: {
     title: "SpeedLearning",
     description:
-      "Learn anything, free, from the greatest minds on earth. Join the waitlist.",
+      "Learn anything in 30 to 60 minutes. Join the waitlist.",
     url: "https://speedlearning.com",
     siteName: "SpeedLearning",
     type: "website",
@@ -42,7 +48,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "SpeedLearning",
     description:
-      "Learn anything, free, from the greatest minds on earth. Join the waitlist.",
+      "Learn anything in 30 to 60 minutes. Join the waitlist.",
   },
 };
 
@@ -51,37 +57,18 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const siteId = process.env.NEXT_PUBLIC_CIO_SITE_ID;
-  const region = (process.env.NEXT_PUBLIC_CIO_REGION || "us").toLowerCase();
-  const trackerSrc =
-    region === "eu"
-      ? "https://assets.customer.io/assets/track-eu.js"
-      : "https://assets.customer.io/assets/track.js";
-
   return (
-    <html lang="en" className={`${plex.variable} ${mono.variable} ${serif.variable}`}>
+    <html
+      lang="en"
+      className={`${plex.variable} ${mono.variable} ${serif.variable}`}
+    >
       <body>
         {children}
-        {siteId ? (
-          <Script id="cio-snippet" strategy="afterInteractive">
-            {`
-              var _cio = _cio || [];
-              (function() {
-                var a,b,c;
-                a = function(f){return function(){_cio.push([f].concat(Array.prototype.slice.call(arguments,0)));};};
-                b = ["load","identify","sidentify","track","page","on","off"];
-                for(c=0;c<b.length;c++){_cio[b[c]] = a(b[c]);}
-                var t = document.createElement('script'),
-                    s = document.getElementsByTagName('script')[0];
-                t.async = true;
-                t.id    = 'cio-tracker';
-                t.setAttribute('data-site-id', '${siteId}');
-                t.src   = '${trackerSrc}';
-                s.parentNode.insertBefore(t, s);
-              })();
-            `}
-          </Script>
-        ) : null}
+        <Script id="cio-cdp-snippet" strategy="afterInteractive">
+          {`
+            !function(){var i="cioanalytics",analytics=(window[i]=window[i]||[]);if(!analytics.initialize)if(analytics.invoked)window.console&&console.error&&console.error("Snippet included twice.");else{analytics.invoked=!0;analytics.methods=["trackSubmit","trackClick","trackLink","trackForm","pageview","identify","reset","group","track","ready","alias","debug","page","once","off","on","addSourceMiddleware","addIntegrationMiddleware","setAnonymousId","addDestinationMiddleware"];analytics.factory=function(e){return function(){var t=Array.prototype.slice.call(arguments);t.unshift(e);analytics.push(t);return analytics}};for(var e=0;e<analytics.methods.length;e++){var key=analytics.methods[e];analytics[key]=analytics.factory(key)}analytics.load=function(key,e){var t=document.createElement("script");t.type="text/javascript";t.async=!0;t.setAttribute("data-global-customerio-analytics-key",i);t.src="https://cdp.customer.io/v1/analytics-js/snippet/"+key+"/analytics.min.js";var n=document.getElementsByTagName("script")[0];n.parentNode.insertBefore(t,n);analytics._writeKey=key;analytics._loadOptions=e};analytics.SNIPPET_VERSION="4.15.3";analytics.load("${CIO_WRITE_KEY}");analytics.page();}}();
+          `}
+        </Script>
       </body>
     </html>
   );

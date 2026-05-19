@@ -4,13 +4,17 @@ import { useState } from "react";
 
 type Status = "idle" | "submitting" | "success" | "error";
 
+// Customer.io CDP / Data Pipelines (cioanalytics) — Segment-compatible API.
+type Traits = Record<string, unknown>;
+interface CioAnalytics {
+  identify: (userId: string, traits?: Traits) => void;
+  track: (event: string, properties?: Traits) => void;
+  page: (name?: string, properties?: Traits) => void;
+}
+
 declare global {
   interface Window {
-    _cio?: {
-      identify: (attrs: Record<string, unknown>) => void;
-      track: (name: string, attrs?: Record<string, unknown>) => void;
-      page: (url?: string, attrs?: Record<string, unknown>) => void;
-    };
+    cioanalytics?: CioAnalytics;
   }
 }
 
@@ -35,23 +39,20 @@ export default function WaitlistForm() {
     setMessage("");
 
     try {
-      if (typeof window !== "undefined" && window._cio) {
-        const now = Math.floor(Date.now() / 1000);
-        window._cio.identify({
-          id: trimmed,
+      if (typeof window !== "undefined" && window.cioanalytics) {
+        const nowIso = new Date().toISOString();
+        window.cioanalytics.identify(trimmed, {
           email: trimmed,
-          created_at: now,
-          waitlist_signed_up_at: now,
+          waitlist_signed_up_at: nowIso,
           waitlist_source: "speedlearning.com",
         });
-        window._cio.track("waitlist_signup", {
+        window.cioanalytics.track("waitlist_signup", {
           source: "speedlearning.com",
-          signed_up_at: now,
+          signed_up_at: nowIso,
         });
       } else if (process.env.NODE_ENV !== "production") {
-        // Snippet not loaded (e.g. NEXT_PUBLIC_CIO_SITE_ID missing in dev).
         console.warn(
-          "[waitlist] Customer.io snippet not loaded. Set NEXT_PUBLIC_CIO_SITE_ID."
+          "[waitlist] cioanalytics not loaded — snippet hasn't initialized yet."
         );
       }
 
