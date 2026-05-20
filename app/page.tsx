@@ -33,7 +33,7 @@ export default function Home() {
 
           <div className="form-bonus">
             <span className="bonus-tag">Bonus</span>
-            <span>First Volume free at launch &mdash; waitlist signups only.</span>
+            <span>50% off your first Volume &mdash; waitlist signups only.</span>
           </div>
 
           <WaitlistForm />
