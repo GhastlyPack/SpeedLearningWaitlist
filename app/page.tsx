@@ -28,7 +28,8 @@ export default function Home() {
             Type a topic. SpeedLearning pulls the top videos, articles, papers,
             and transcripts on it &mdash; then synthesizes a complete library:
             TLDR, full report with citations, slide deck, mind map, flashcards,
-            and an AI chat partner trained on every source.
+            explainer infographics, a deep-dive video, and an AI chat partner
+            trained on every source.
           </p>
 
           <div className="form-bonus">
@@ -49,18 +50,19 @@ export default function Home() {
               </p>
             </div>
             <div className="bullet">
-              <h3>Eight ways to learn</h3>
+              <h3>Ten ways to learn</h3>
               <p>
                 TLDR, executive summary, full report, slide deck, mind map,
-                flashcards, source list, and a chat partner that knows every
-                source.
+                flashcards, explainer infographics, deep-dive video, source
+                list, and a chat partner that knows every source.
               </p>
             </div>
             <div className="bullet">
-              <h3>Pay per topic</h3>
+              <h3>Flat $50 per topic</h3>
               <p>
-                $50 to $500 by depth. No subscription. Earn free credits by
-                inviting friends and completing assessment quizzes.
+                One price for a deep dive on anything. No subscription, no
+                tiers. Earn free credits by inviting friends and completing
+                assessment quizzes.
               </p>
             </div>
           </div>

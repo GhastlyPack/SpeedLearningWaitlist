@@ -4,7 +4,7 @@ export const runtime = "edge";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export const alt =
-  "SpeedLearning — learn anything in 30 to 60 minutes. Type a topic, get a TLDR, report, slide deck, mind map, flashcards, and an AI chat partner.";
+  "SpeedLearning — learn anything in 30 to 60 minutes. Type a topic, get a TLDR, report, slide deck, mind map, flashcards, infographics, deep-dive video, and an AI chat partner.";
 
 export default async function OpengraphImage() {
   const [plexBold, plexReg, iconData] = await Promise.all([
@@ -114,8 +114,8 @@ export default async function OpengraphImage() {
               maxWidth: 980,
             }}
           >
-            Type a topic. Get a TLDR, full report, slide deck, mind map,
-            flashcards, and an AI chat partner trained on every source.
+            Type a topic. Get text, video, infographics, mind map, flashcards,
+            and an AI chat partner trained on every source. $50 flat.
           </div>
         </div>
 

@@ -34,7 +34,7 @@ const CIO_WRITE_KEY =
 export const metadata: Metadata = {
   title: "SpeedLearning — learn anything in 30 to 60 minutes",
   description:
-    "Type a topic. SpeedLearning pulls the best videos, articles, and papers and synthesizes a complete learning library — TLDR, report, slide deck, mind map, flashcards, AI chat partner. Join the waitlist.",
+    "Type a topic. SpeedLearning pulls the best videos, articles, and papers and synthesizes a complete learning library — TLDR, report, slide deck, mind map, flashcards, explainer infographics, deep-dive video, and an AI chat partner. $50 flat. Join the waitlist.",
   metadataBase: new URL("https://speedlearning.com"),
   openGraph: {
     title: "SpeedLearning",
