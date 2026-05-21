@@ -306,14 +306,14 @@ export default async function DashboardPage() {
                 </tr>
               ) : (
                 data.cioRecent.map((p) => (
-                  <tr key={p.id}>
+                  <tr key={p.cioId}>
                     <td>
                       {p.firstName || "—"}
                       {p.lastName ? ` ${p.lastName}` : ""}
                     </td>
                     <td className="email">{maskEmail(p.email)}</td>
                     <td className="source">{p.source || "—"}</td>
-                    <td className="when">{timeAgo(p.signedUpAt || p.createdAt)}</td>
+                    <td className="when">{timeAgo(p.signedUpAt)}</td>
                   </tr>
                 ))
               )}
