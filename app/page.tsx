@@ -34,7 +34,7 @@ export default function Home() {
 
           <div className="form-bonus">
             <span className="bonus-tag">Bonus</span>
-            <span>50% off your first Volume &mdash; waitlist signups only.</span>
+            <span>50% off your first Deep Dive &mdash; waitlist signups only.</span>
           </div>
 
           <WaitlistForm />
