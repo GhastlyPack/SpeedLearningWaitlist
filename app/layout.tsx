@@ -37,6 +37,16 @@ const CIO_WRITE_KEY =
 const META_PIXEL_ID =
   process.env.NEXT_PUBLIC_META_PIXEL_ID || "2100944364633594";
 
+// Google Analytics 4 Measurement ID. Public — exposed to the browser by
+// design. gtag.js uses this for both pageview tracking and key events.
+const GA_MEASUREMENT_ID =
+  process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "G-8MWGMTH7WN";
+
+// Route dev-mode events to GA4 DebugView (Admin → DebugView) instead of
+// the regular reporting pipeline so we don't pollute prod numbers while
+// iterating locally.
+const GA_DEBUG = process.env.NODE_ENV !== "production";
+
 export const metadata: Metadata = {
   title: "SpeedLearning — learn anything in 30 to 60 minutes",
   description:
@@ -70,6 +80,20 @@ export default function RootLayout({
     >
       <body>
         {children}
+        <Script
+          id="ga4-loader"
+          strategy="afterInteractive"
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+        />
+        <Script id="ga4-init" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            window.gtag = gtag;
+            gtag('js', new Date());
+            gtag('config', '${GA_MEASUREMENT_ID}', { debug_mode: ${GA_DEBUG} });
+          `}
+        </Script>
         <Script id="meta-pixel" strategy="afterInteractive">
           {`
             !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${META_PIXEL_ID}');fbq('track','PageView');

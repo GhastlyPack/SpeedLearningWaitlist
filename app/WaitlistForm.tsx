@@ -16,6 +16,8 @@ declare global {
   interface Window {
     cioanalytics?: CioAnalytics;
     fbq?: (...args: unknown[]) => void;
+    gtag?: (...args: unknown[]) => void;
+    dataLayer?: unknown[];
   }
 }
 
@@ -102,6 +104,25 @@ export default function WaitlistForm() {
       // Non-fatal: a tracker hiccup shouldn't block the success state.
       if (process.env.NODE_ENV !== "production") {
         console.warn("[waitlist] cioanalytics call threw", err);
+      }
+    }
+
+    // -- Google Analytics 4 (gtag.js) — fires the "waitlist_signup" key event
+    try {
+      if (typeof window !== "undefined" && typeof window.gtag === "function") {
+        window.gtag("event", "waitlist_signup", {
+          value: 0,
+          currency: "USD",
+          method: "email_form",
+        });
+      } else if (process.env.NODE_ENV !== "production") {
+        console.warn(
+          "[waitlist] gtag not loaded — GA4 snippet hasn't initialized yet."
+        );
+      }
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[waitlist] gtag call threw", err);
       }
     }
 

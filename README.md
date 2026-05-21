@@ -45,6 +45,40 @@ In Customer.io:
 - Build a segment on `waitlist_source = speedlearning.com` (or filter by the
   `waitlist_signup` event) for the launch broadcast.
 
+## Google Analytics 4 (gtag.js)
+
+GA4 is wired browser-side via the standard `gtag.js` snippet in
+`app/layout.tsx` and overridable with `NEXT_PUBLIC_GA_MEASUREMENT_ID`. No
+secrets, no server-side mirror — the Measurement ID is fully public.
+
+- `page_view` fires automatically on load (Enhanced Measurement is on by
+  default in the data stream).
+- On a successful waitlist submit, the form fires:
+  ```js
+  gtag('event', 'waitlist_signup', {
+    value: 0,
+    currency: 'USD',
+    method: 'email_form',
+  });
+  ```
+- `waitlist_signup` must be marked as a **Key event** in
+  Admin → Key events for it to count as a conversion.
+
+### Dev mode automatically routes to DebugView
+
+The init call passes `debug_mode: true` whenever `NODE_ENV !== 'production'`,
+so events from `npm run dev` show up in GA4 → Admin → DebugView without
+needing the Chrome extension or a debug querystring. Prod builds set
+`debug_mode: false` so live traffic flows into the normal reports.
+
+### Verifying after deploy
+
+1. **Realtime report:** Reports → Realtime in GA4. Submit through the live
+   form; `page_view` and `waitlist_signup` should appear within 10–30s with
+   a "Key event" badge next to `waitlist_signup`.
+2. **DebugView (dev only):** Admin → DebugView for events fired from `npm
+   run dev`.
+
 ## Meta Pixel + Conversions API
 
 The lander runs both halves of Meta's tracking spec:
