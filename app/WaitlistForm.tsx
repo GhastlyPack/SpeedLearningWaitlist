@@ -15,10 +15,29 @@ interface CioAnalytics {
 declare global {
   interface Window {
     cioanalytics?: CioAnalytics;
+    fbq?: (...args: unknown[]) => void;
   }
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function readCookie(name: string): string | undefined {
+  if (typeof document === "undefined") return undefined;
+  const match = document.cookie.match(
+    new RegExp("(^|; )" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "=([^;]*)")
+  );
+  return match ? decodeURIComponent(match[2]) : undefined;
+}
+
+function newEventId(): string {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 export default function WaitlistForm() {
   const [firstName, setFirstName] = useState("");
@@ -54,9 +73,12 @@ export default function WaitlistForm() {
     setStatus("submitting");
     setMessage("");
 
+    const nowIso = new Date().toISOString();
+    const eventId = newEventId();
+
+    // -- Customer.io (CDP / cioanalytics) -----------------------------------
     try {
       if (typeof window !== "undefined" && window.cioanalytics) {
-        const nowIso = new Date().toISOString();
         const traits: Traits = {
           email: cleanEmail,
           first_name: cleanFirst,
@@ -76,16 +98,65 @@ export default function WaitlistForm() {
           "[waitlist] cioanalytics not loaded — snippet hasn't initialized yet."
         );
       }
-
-      setStatus("success");
-      setMessage(`You're on the list, ${cleanFirst}. We'll be in touch.`);
-      setFirstName("");
-      setLastName("");
-      setEmail("");
-    } catch {
-      setStatus("error");
-      setMessage("Something went wrong. Try again in a moment.");
+    } catch (err) {
+      // Non-fatal: a tracker hiccup shouldn't block the success state.
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[waitlist] cioanalytics call threw", err);
+      }
     }
+
+    // -- Meta Pixel (browser) — fires the "Lead" standard event -------------
+    try {
+      if (typeof window !== "undefined" && window.fbq) {
+        window.fbq(
+          "track",
+          "Lead",
+          {
+            content_name: "SpeedLearning Waitlist",
+            value: 0,
+            currency: "USD",
+          },
+          { eventID: eventId }
+        );
+      } else if (process.env.NODE_ENV !== "production") {
+        console.warn(
+          "[waitlist] fbq not loaded — Meta Pixel snippet hasn't initialized yet."
+        );
+      }
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[waitlist] fbq call threw", err);
+      }
+    }
+
+    // -- Meta CAPI (server) — fire-and-forget, deduped via eventID ----------
+    if (typeof window !== "undefined") {
+      const fbp = readCookie("_fbp");
+      const fbc = readCookie("_fbc");
+      void fetch("/api/meta-capi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event_id: eventId,
+          email: cleanEmail,
+          first_name: cleanFirst,
+          last_name: cleanLast || undefined,
+          fbp,
+          fbc,
+          event_source_url: window.location.href,
+        }),
+        keepalive: true,
+      }).catch(() => {
+        // Browser pixel already covered the event; server fallback failure
+        // is acceptable. We don't surface this to the user.
+      });
+    }
+
+    setStatus("success");
+    setMessage(`You're on the list, ${cleanFirst}. We'll be in touch.`);
+    setFirstName("");
+    setLastName("");
+    setEmail("");
   };
 
   const metaClass =

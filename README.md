@@ -45,6 +45,41 @@ In Customer.io:
 - Build a segment on `waitlist_source = speedlearning.com` (or filter by the
   `waitlist_signup` event) for the launch broadcast.
 
+## Meta Pixel + Conversions API
+
+The lander runs both halves of Meta's tracking spec:
+
+- **Browser pixel** loaded via `app/layout.tsx` — fires `PageView` on load and
+  `Lead` on a successful waitlist submit. Pixel ID is baked into the layout as
+  a default and is overridable via `NEXT_PUBLIC_META_PIXEL_ID`.
+- **Conversions API** at `POST /api/meta-capi` — server-side mirror of the
+  same `Lead` event, deduped via a per-submit `event_id` (a UUID generated in
+  the browser, sent to both endpoints). Email, first name, and last name are
+  SHA-256 hashed before being sent to Meta; client IP and user-agent come from
+  request headers; `_fbp` and `_fbc` cookies are read in the browser and
+  passed through.
+
+### Required env var (server-only)
+
+| Var | Required | Notes |
+| --- | --- | --- |
+| `META_CAPI_TOKEN` | yes (for CAPI) | Conversions API access token. Generate in Events Manager → Settings → Conversions API → Generate Access Token. **Never commit this.** Set it in Vercel → Settings → Environment Variables for Production, Preview, and Development. If unset, `/api/meta-capi` is a silent no-op — the browser pixel still works alone. |
+
+### Verifying in Events Manager
+
+After deploying:
+1. **Events Manager → Test Events** → enter the deployed URL → submit a real
+   email through the form. You should see one `Lead` event arrive with both
+   "Browser" and "Server" badges, deduplicated by `event_id`.
+2. **Diagnostics** tab should show ≥80% match quality once Automatic Advanced
+   Matching is enabled in Settings.
+
+### Enable Automatic Advanced Matching (one-time)
+
+Events Manager → your dataset → **Settings** → toggle **Automatic Advanced
+Matching** on. Meta will pull hashed email/first name/last name from the
+form fields automatically, on top of what we send server-side.
+
 ## Deploy (Vercel)
 
 1. [vercel.com/new](https://vercel.com/new) → Import
@@ -56,7 +91,9 @@ In Customer.io:
    - **Application Preset**: Next.js (not Other).
    - **Root Directory**: `./`
    - **Build / Output**: leave defaults.
-   - **Environment Variables**: none required for the default workspace.
+   - **Environment Variables**:
+     - `META_CAPI_TOKEN` — required for Conversions API. Without it, `/api/meta-capi` is a silent no-op. See the Meta Pixel section above.
+     - Other env vars are optional overrides (see `.env.example`).
 3. Settings → Domains → add `speedlearning.com` + `www.speedlearning.com`.
 4. At GoDaddy → DNS, follow what Vercel shows (typically `A 76.76.21.21` on the
    apex and `CNAME cname.vercel-dns.com` on `www`).
