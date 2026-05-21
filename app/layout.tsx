@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans, JetBrains_Mono, Newsreader } from "next/font/google";
 import Script from "next/script";
+import { headers } from "next/headers";
 import "./globals.css";
 
 const plex = IBM_Plex_Sans({
@@ -68,11 +69,17 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Skip marketing trackers (GA, Meta Pixel, Customer.io) on the internal
+  // dashboard subdomain so team usage doesn't pollute conversion data.
+  const headersList = await headers();
+  const host = (headersList.get("host") || "").toLowerCase();
+  const isDashSubdomain = host.startsWith("dash.");
+
   return (
     <html
       lang="en"
@@ -80,6 +87,8 @@ export default function RootLayout({
     >
       <body>
         {children}
+        {!isDashSubdomain && (
+          <>
         <Script
           id="ga4-loader"
           strategy="afterInteractive"
@@ -114,6 +123,8 @@ export default function RootLayout({
             !function(){var i="cioanalytics",analytics=(window[i]=window[i]||[]);if(!analytics.initialize)if(analytics.invoked)window.console&&console.error&&console.error("Snippet included twice.");else{analytics.invoked=!0;analytics.methods=["trackSubmit","trackClick","trackLink","trackForm","pageview","identify","reset","group","track","ready","alias","debug","page","once","off","on","addSourceMiddleware","addIntegrationMiddleware","setAnonymousId","addDestinationMiddleware"];analytics.factory=function(e){return function(){var t=Array.prototype.slice.call(arguments);t.unshift(e);analytics.push(t);return analytics}};for(var e=0;e<analytics.methods.length;e++){var key=analytics.methods[e];analytics[key]=analytics.factory(key)}analytics.load=function(key,e){var t=document.createElement("script");t.type="text/javascript";t.async=!0;t.setAttribute("data-global-customerio-analytics-key",i);t.src="https://cdp.customer.io/v1/analytics-js/snippet/"+key+"/analytics.min.js";var n=document.getElementsByTagName("script")[0];n.parentNode.insertBefore(t,n);analytics._writeKey=key;analytics._loadOptions=e};analytics.SNIPPET_VERSION="4.15.3";analytics.load("${CIO_WRITE_KEY}");analytics.page();}}();
           `}
         </Script>
+          </>
+        )}
       </body>
     </html>
   );

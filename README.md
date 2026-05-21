@@ -132,8 +132,60 @@ form fields automatically, on top of what we send server-side.
 4. At GoDaddy → DNS, follow what Vercel shows (typically `A 76.76.21.21` on the
    apex and `CNAME cname.vercel-dns.com` on `www`).
 
-## V2
+## Internal Dashboard (`dash.speedlearning.com`)
+
+Team-facing read-only dashboard rendering signups + GA4 metrics. Served
+from the same Next.js app via `middleware.ts`:
+
+- `dash.speedlearning.com/*` → rewritten to `/dashboard/*` (same app)
+- HTTP Basic Auth gate on every `/dashboard/*` path using
+  `DASHBOARD_PASSWORD` env var
+- Marketing trackers (GA, Meta Pixel, Customer.io) are **skipped** on the
+  dash subdomain so internal team usage doesn't pollute conversion data
+
+### Data sources
+
+- **GA4 Data API** via `@google-analytics/data` — page views, sessions,
+  scrolls, form starts, signup events, daily trend, traffic sources,
+  realtime active users
+- **Customer.io App API** — total waitlist count + recent signups list
+
+Each loader is wrapped in `Promise.allSettled` so a single API failure
+doesn't blank the whole page — affected sections show an error banner
+inline.
+
+### Required env vars (all server-only, mark Sensitive in Vercel)
+
+| Var | Purpose |
+| --- | --- |
+| `DASHBOARD_PASSWORD` | Basic Auth password for any `/dashboard/*` route. |
+| `GA_PROPERTY_ID` | GA4 numeric Property ID (NOT the `G-XXXXXXX` Measurement ID). |
+| `GOOGLE_APPLICATION_CREDENTIALS_BASE64` | Base64 of the GCP service account JSON key file. Service account must have **Viewer** on the GA4 property. |
+| `CIO_APP_API_KEY` | Customer.io App API bearer token (read scopes). |
+| `CIO_REGION` | `us` or `eu` (default `us`). |
+
+### Wiring the subdomain
+
+1. Vercel → project → Settings → Domains → add `dash.speedlearning.com`.
+2. GoDaddy DNS → add CNAME `dash` → `cname.vercel-dns.com` (or whatever
+   Vercel shows).
+3. Once DNS resolves, hitting `dash.speedlearning.com` prompts Basic Auth,
+   then renders the dashboard.
+
+### Locally
+
+```bash
+# In .env.local, set all the dashboard env vars above.
+npm run dev
+# Then hit http://localhost:3000/dashboard (you'll get the Basic Auth prompt)
+```
+
+## V2 ideas
 
 - Embed a product video above the form.
 - Optional server-side `/api/waitlist` fallback for users who block the CIO
   snippet.
+- Migrate GA Data API auth from JSON key to Workload Identity Federation
+  (no static credential).
+- Add Meta Marketing API to the dashboard (Lead counts, audience sizes)
+  once a Facebook App is set up.

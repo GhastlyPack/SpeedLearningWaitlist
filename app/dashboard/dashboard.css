@@ -1,0 +1,322 @@
+/* SpeedLearning Dashboard — editorial layout using the lander's tokens. */
+
+.dash-page {
+  min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.dash-topbar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 32px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.dash-topbar .left {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.dash-topbar .crumb {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+
+.dash-topbar .right {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+
+.dash-main {
+  flex: 1;
+  padding: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ---------- Hero metrics grid ---------- */
+.dash-hero {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  margin-bottom: 32px;
+}
+
+.dash-hero .cell {
+  background: var(--paper);
+  padding: 22px 24px;
+}
+
+.dash-hero .cell .label {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  margin-bottom: 8px;
+}
+
+.dash-hero .cell .value {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 36px;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: -0.8px;
+  line-height: 1;
+}
+
+.dash-hero .cell .sub {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.6px;
+  color: var(--ink-mute);
+  margin-top: 6px;
+}
+
+.dash-hero .cell .value.accent {
+  color: var(--ax);
+}
+
+@media (max-width: 880px) {
+  .dash-hero {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ---------- Section blocks ---------- */
+.dash-section {
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  margin-bottom: 32px;
+}
+
+.dash-section .header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.dash-section .header h2 {
+  font-family: var(--font-plex), sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.2px;
+}
+
+.dash-section .header .meta {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+
+.dash-section .body {
+  padding: 22px 24px;
+}
+
+/* ---------- Two-column row ---------- */
+.dash-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 880px) {
+  .dash-row-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dash-row-2 .dash-section {
+  margin-bottom: 0;
+}
+
+/* ---------- Recent signups table ---------- */
+.dash-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.dash-table th,
+.dash-table td {
+  text-align: left;
+  padding: 12px 24px;
+  border-top: 1px solid var(--rule);
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.dash-table thead th {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  font-weight: 500;
+  border-top: 0;
+  border-bottom: 1px solid var(--rule);
+  padding: 14px 24px;
+}
+
+.dash-table td.email,
+.dash-table td.when,
+.dash-table td.source {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.dash-table .empty {
+  text-align: center;
+  padding: 32px;
+  color: var(--ink-mute);
+  font-style: italic;
+}
+
+/* ---------- Trend chart (CSS bars) ---------- */
+.dash-trend {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 140px;
+  padding: 0 24px 24px;
+}
+
+.dash-trend .bar {
+  flex: 1;
+  background: var(--ax-soft);
+  position: relative;
+  min-height: 1px;
+  transition: opacity 0.15s ease;
+}
+
+.dash-trend .bar.has-signup {
+  background: var(--ax);
+}
+
+.dash-trend .bar:hover {
+  opacity: 0.7;
+}
+
+.dash-trend .bar .tip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--bg);
+  padding: 6px 8px;
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.6px;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.dash-trend .bar:hover .tip {
+  display: block;
+}
+
+.dash-trend-axis {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 24px 18px;
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.6px;
+  color: var(--ink-mute);
+}
+
+/* ---------- Source list ---------- */
+.dash-source-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.dash-source-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 24px;
+  border-top: 1px solid var(--rule);
+}
+
+.dash-source-row:first-child {
+  border-top: 0;
+}
+
+.dash-source-row .name {
+  font-family: var(--font-mono), monospace;
+  font-size: 12.5px;
+  color: var(--ink);
+}
+
+.dash-source-row .name .medium {
+  color: var(--ink-mute);
+  margin-left: 8px;
+}
+
+.dash-source-row .count {
+  font-family: var(--font-mono), monospace;
+  font-size: 13px;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Error states ---------- */
+.dash-error {
+  border: 1px solid var(--ax);
+  background: rgba(139, 44, 44, 0.04);
+  padding: 14px 18px;
+  margin-bottom: 24px;
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  color: var(--ax);
+}
+
+.dash-error strong {
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  margin-right: 8px;
+}
+
+/* ---------- Footer ---------- */
+.dash-footer {
+  padding: 18px 32px;
+  border-top: 1px solid var(--rule);
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  display: flex;
+  justify-content: space-between;
+}
+
+@media (max-width: 720px) {
+  .dash-topbar { padding: 18px 22px; }
+  .dash-main { padding: 22px; }
+  .dash-footer { padding: 18px 22px; flex-direction: column; gap: 6px; }
+}
