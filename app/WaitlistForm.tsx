@@ -4,17 +4,8 @@ import { useState } from "react";
 
 type Status = "idle" | "submitting" | "success" | "error";
 
-// Customer.io CDP / Data Pipelines (cioanalytics) — Segment-compatible API.
-type Traits = Record<string, unknown>;
-interface CioAnalytics {
-  identify: (userId: string, traits?: Traits) => void;
-  track: (event: string, properties?: Traits) => void;
-  page: (name?: string, properties?: Traits) => void;
-}
-
 declare global {
   interface Window {
-    cioanalytics?: CioAnalytics;
     fbq?: (...args: unknown[]) => void;
     gtag?: (...args: unknown[]) => void;
     dataLayer?: unknown[];
@@ -78,33 +69,27 @@ export default function WaitlistForm() {
     const nowIso = new Date().toISOString();
     const eventId = newEventId();
 
-    // -- Customer.io (CDP / cioanalytics) -----------------------------------
-    try {
-      if (typeof window !== "undefined" && window.cioanalytics) {
-        const traits: Traits = {
+    // -- Customer.io (server-side Track API at /api/cio-track) --------------
+    // Browser snippet was removed 2026-05-21: it got blocked by ad blockers
+    // and the CDP -> Journeys destination silently dropped events. Server-side
+    // Track API writes directly to Journeys with no middlewares involved.
+    if (typeof window !== "undefined") {
+      void fetch("/api/cio-track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           email: cleanEmail,
           first_name: cleanFirst,
-          waitlist: true,
-          waitlist_signed_up_at: nowIso,
-          waitlist_source: "speedlearning.com",
-        };
-        if (cleanLast) traits.last_name = cleanLast;
-
-        window.cioanalytics.identify(cleanEmail, traits);
-        window.cioanalytics.track("waitlist_signup", {
+          last_name: cleanLast || undefined,
           source: "speedlearning.com",
           signed_up_at: nowIso,
-        });
-      } else if (process.env.NODE_ENV !== "production") {
-        console.warn(
-          "[waitlist] cioanalytics not loaded — snippet hasn't initialized yet."
-        );
-      }
-    } catch (err) {
-      // Non-fatal: a tracker hiccup shouldn't block the success state.
-      if (process.env.NODE_ENV !== "production") {
-        console.warn("[waitlist] cioanalytics call threw", err);
-      }
+        }),
+        keepalive: true,
+      }).catch(() => {
+        // Server-side route. Same-origin, no extension can touch it. If it
+        // does fail, the request lands in Vercel logs anyway as a recovery
+        // breadcrumb (we console.log the email server-side).
+      });
     }
 
     // -- Google Analytics 4 (gtag.js) — fires the "waitlist_signup" key event

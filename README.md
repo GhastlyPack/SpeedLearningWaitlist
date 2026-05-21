@@ -1,8 +1,14 @@
 # SpeedLearning Waitlist
 
 V1 landing page for [speedlearning.com](https://speedlearning.com). Email
-signup flows into Customer.io via the in-browser CDP / Data Pipelines snippet
-(`cioanalytics`).
+signup flows into Customer.io via a **server-side Track API route** at
+`POST /api/cio-track` — directly to the Journeys workspace, no CDP middleware.
+
+> **Architecture note (2026-05-21):** Migrated off the browser `cioanalytics`
+> snippet entirely after losing ~30 in-person event signups when the CDP →
+> Journeys destination silently disconnected. The Track API route writes
+> directly to Journeys with no intermediary, and is same-origin from the
+> browser so ad blockers can't intercept it either.
 
 ## Stack
 
@@ -19,30 +25,40 @@ npm install
 npm run dev
 ```
 
-Opens on http://localhost:3000. The CIO write key is baked into `app/layout.tsx`
-so local submissions hit the live workspace by default. Override with
-`NEXT_PUBLIC_CIO_WRITE_KEY` in `.env.local` if you want to point at a different
-workspace.
+Opens on http://localhost:3000. Customer.io writes go through `/api/cio-track`
+which requires `CIO_TRACK_SITE_ID` + `CIO_TRACK_API_KEY` in `.env.local` to
+actually deliver. Without them the route is a silent no-op (returns
+`ok: false`) so local dev doesn't blow up.
 
-## Customer.io wiring
+## Customer.io wiring (server-side Track API)
 
-On successful submit the client calls:
+On every successful form submit the form fires a same-origin POST to
+`/api/cio-track` with `{email, first_name, last_name?, signed_up_at, source}`.
+The route:
 
-```js
-cioanalytics.identify(email, {
-  email,
-  waitlist_signed_up_at: <ISO>,
-  waitlist_source: "speedlearning.com",
-});
-cioanalytics.track("waitlist_signup", {
-  source: "speedlearning.com",
-  signed_up_at: <ISO>,
-});
-```
+1. PUTs to `https://track.customer.io/api/v1/customers/{email}` with traits:
+   ```json
+   {
+     "email": "you@domain.com",
+     "first_name": "Richard",
+     "last_name": "Hendricks",
+     "waitlist": true,
+     "waitlist_signed_up_at": "<ISO>",
+     "waitlist_source": "speedlearning.com",
+     "created_at": <unix>
+   }
+   ```
+2. POSTs to `/api/v1/customers/{email}/events` with `name: "waitlist_signup"`
+   and `{source, signed_up_at}` properties.
+3. Logs the email + first name to Vercel function logs as a recovery
+   breadcrumb in case CIO itself ever has an outage.
+
+Auth: HTTP Basic with `siteId:apiKey`. Region-aware (`CIO_REGION` env, defaults
+to `us`; `eu` flips to `track-eu.customer.io`).
 
 In Customer.io:
-- People appear with the email as their `userId`.
-- Build a segment on `waitlist_source = speedlearning.com` (or filter by the
+- People appear with the email as their `id`.
+- Build a segment on `attribute: waitlist is true` (or filter by the
   `waitlist_signup` event) for the launch broadcast.
 
 ## Google Analytics 4 (gtag.js)
