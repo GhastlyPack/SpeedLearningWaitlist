@@ -110,9 +110,14 @@ function shortDate(yyyymmdd: string): string {
 export default async function DashboardPage() {
   const data = await loadData();
 
+  // Conversion rate = waitlist signups / page views. Page views is a more
+  // stable denominator than sessions for a single-page lander — sessions
+  // can be smaller than the count of signup events when users submit
+  // multiple times within one session (common during QA/test traffic) and
+  // produce nonsensical >100% rates. Matches the Funnel section exactly.
   const cvr =
-    data.heroGa && data.heroGa.sessions > 0
-      ? ((data.heroGa.waitlistSignups / data.heroGa.sessions) * 100).toFixed(1)
+    data.heroGa && data.heroGa.pageViews > 0
+      ? ((data.heroGa.waitlistSignups / data.heroGa.pageViews) * 100).toFixed(1)
       : null;
 
   const maxTrend = Math.max(1, ...data.trend.map((d) => d.sessions));

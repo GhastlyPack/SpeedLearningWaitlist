@@ -154,6 +154,11 @@ export async function getHeroMetrics(
 
 /**
  * Daily sessions + signups for the last N days, oldest first.
+ *
+ * GA's API only returns rows for days with ≥1 session. We pre-seed the
+ * result map with every date in the window at zero so the dashboard chart
+ * always renders N evenly-spaced bars (otherwise a single active day shows
+ * as one bar filling the full width).
  */
 export async function getDailyTrend(days: number = 30): Promise<DailyTrendPoint[]> {
   const { client, property } = getClient();
@@ -181,16 +186,23 @@ export async function getDailyTrend(days: number = 30): Promise<DailyTrendPoint[
     }),
   ]);
 
-  // Merge by date
+  // Pre-seed every date in the window at zero so empty days still render.
   const map = new Map<string, DailyTrendPoint>();
+  const now = new Date();
+  // Use UTC-ish ISO date strings. Off-by-one at midnight property timezone
+  // is acceptable for the visual.
+  for (let i = days; i >= 0; i--) {
+    const d = new Date(now);
+    d.setUTCDate(now.getUTCDate() - i);
+    const dateStr = d.toISOString().slice(0, 10);
+    map.set(dateStr, { date: dateStr, sessions: 0, signups: 0 });
+  }
 
   for (const r of sessionsResp[0]?.rows ?? []) {
     const date = isoDateFromGaYmd(r.dimensionValues?.[0]?.value || "");
-    map.set(date, {
-      date,
-      sessions: n(r.metricValues?.[0]?.value),
-      signups: 0,
-    });
+    const existing = map.get(date) || { date, sessions: 0, signups: 0 };
+    existing.sessions = n(r.metricValues?.[0]?.value);
+    map.set(date, existing);
   }
   for (const r of signupsResp[0]?.rows ?? []) {
     const date = isoDateFromGaYmd(r.dimensionValues?.[0]?.value || "");
