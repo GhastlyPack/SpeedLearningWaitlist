@@ -28,6 +28,7 @@ interface DashboardData {
   sourcesError?: string;
   cioTotal: number | null;
   cioRecent: WaitlistPerson[];
+  cioDailySignups: Record<string, number>;
   cioError?: string;
 }
 
@@ -58,6 +59,8 @@ async function loadData(): Promise<DashboardData> {
       sourcesRes.status === "rejected" ? errMsg(sourcesRes) : undefined,
     cioTotal: cioRes.status === "fulfilled" ? cioRes.value.total : null,
     cioRecent: cioRes.status === "fulfilled" ? cioRes.value.recent : [],
+    cioDailySignups:
+      cioRes.status === "fulfilled" ? cioRes.value.dailySignups : {},
     cioError: cioRes.status === "rejected" ? errMsg(cioRes) : undefined,
   };
 }
@@ -110,17 +113,28 @@ function shortDate(yyyymmdd: string): string {
 export default async function DashboardPage() {
   const data = await loadData();
 
-  // Conversion rate = waitlist signups / page views. Page views is a more
-  // stable denominator than sessions for a single-page lander — sessions
-  // can be smaller than the count of signup events when users submit
-  // multiple times within one session (common during QA/test traffic) and
-  // produce nonsensical >100% rates. Matches the Funnel section exactly.
+  // Conversion rate uses Customer.io's waitlist=true count as the canonical
+  // signup number (it's the source of truth — deduped, deletions reflected,
+  // never includes test events that were cleaned up). Denominator is GA's
+  // active users over the same window, which is closer to "unique visitors"
+  // than sessions. Falls back to sessions if active users is unavailable.
+  const visitors =
+    (data.heroGa?.activeUsers ?? 0) > 0
+      ? data.heroGa!.activeUsers
+      : data.heroGa?.sessions ?? 0;
   const cvr =
-    data.heroGa && data.heroGa.pageViews > 0
-      ? ((data.heroGa.waitlistSignups / data.heroGa.pageViews) * 100).toFixed(1)
+    data.cioTotal != null && visitors > 0
+      ? ((data.cioTotal / visitors) * 100).toFixed(1)
       : null;
 
-  const maxTrend = Math.max(1, ...data.trend.map((d) => d.sessions));
+  // Overlay CIO daily signups onto the GA trend so the chart's red bars
+  // reflect actual people (post-deletes), not raw GA event counts.
+  const trendForChart = data.trend.map((point) => ({
+    ...point,
+    signups: data.cioDailySignups[point.date] || 0,
+  }));
+
+  const maxTrend = Math.max(1, ...trendForChart.map((d) => d.sessions));
 
   const now = new Date().toLocaleString("en-US", {
     month: "short",
@@ -161,7 +175,7 @@ export default async function DashboardPage() {
             <div className="label">Conversion · 30d</div>
             <div className="value">{cvr ? `${cvr}%` : "—"}</div>
             <div className="sub">
-              GA signups: {fmt(data.heroGa?.waitlistSignups ?? null)}
+              {fmt(data.cioTotal)} signups / {fmt(visitors)} visitors
             </div>
           </div>
           <div className="cell">
@@ -191,7 +205,7 @@ export default async function DashboardPage() {
             <h2>Daily sessions &amp; signups · last 30 days</h2>
             <div className="meta">red bars = signups landed</div>
           </div>
-          {data.trend.length === 0 ? (
+          {trendForChart.length === 0 ? (
             <div className="dash-table">
               <div className="empty">
                 {data.trendError ? data.trendError : "No data yet."}
@@ -200,7 +214,7 @@ export default async function DashboardPage() {
           ) : (
             <>
               <div className="dash-trend">
-                {data.trend.map((point) => {
+                {trendForChart.map((point) => {
                   const heightPct = Math.max(
                     1,
                     Math.round((point.sessions / maxTrend) * 100)
@@ -219,10 +233,10 @@ export default async function DashboardPage() {
                 })}
               </div>
               <div className="dash-trend-axis">
-                <span>{data.trend[0] && shortDate(data.trend[0].date)}</span>
+                <span>{trendForChart[0] && shortDate(trendForChart[0].date)}</span>
                 <span>
-                  {data.trend[data.trend.length - 1] &&
-                    shortDate(data.trend[data.trend.length - 1].date)}
+                  {trendForChart[trendForChart.length - 1] &&
+                    shortDate(trendForChart[trendForChart.length - 1].date)}
                 </span>
               </div>
             </>
@@ -273,7 +287,7 @@ export default async function DashboardPage() {
               />
               <FunnelRow
                 label="Waitlist signups"
-                value={data.heroGa?.waitlistSignups ?? null}
+                value={data.cioTotal}
                 base={data.heroGa?.pageViews ?? null}
                 accent
               />

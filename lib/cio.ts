@@ -70,6 +70,9 @@ export interface WaitlistPerson {
 export interface WaitlistSummary {
   total: number;
   recent: WaitlistPerson[];
+  /** Map of "YYYY-MM-DD" (UTC) -> signup count. Used to draw the dashboard
+   *  daily-trend chart from the canonical CIO source instead of GA event counts. */
+  dailySignups: Record<string, number>;
 }
 
 interface SearchIdentifier {
@@ -223,8 +226,17 @@ export async function getWaitlistSummary(
   const people = hydrated.filter((p): p is WaitlistPerson => p !== null);
   people.sort((a, b) => (b.signedUpAt || "").localeCompare(a.signedUpAt || ""));
 
+  // Group by UTC date for the daily chart.
+  const dailySignups: Record<string, number> = {};
+  for (const p of people) {
+    if (!p.signedUpAt) continue;
+    const dateStr = p.signedUpAt.slice(0, 10); // "2026-05-21"
+    dailySignups[dateStr] = (dailySignups[dateStr] || 0) + 1;
+  }
+
   return {
     total,
     recent: people.slice(0, recentLimit),
+    dailySignups,
   };
 }
