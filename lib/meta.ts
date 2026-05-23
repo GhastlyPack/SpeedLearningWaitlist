@@ -40,14 +40,48 @@ async function metaFetch<T>(
   }
   url.searchParams.set("access_token", TOKEN);
 
+  // Build a redacted URL for logs so we don't leak the token.
+  const safeUrl = url.toString().replace(/access_token=[^&]+/, "access_token=***");
+  const accountId = ACCOUNT_ID_RAW || "(unset)";
+
   const resp = await fetch(url.toString(), { cache: "no-store" });
+  const bodyText = await resp.text();
+
   if (!resp.ok) {
-    const text = await resp.text().catch(() => "");
+    console.error(
+      "[meta] error",
+      JSON.stringify({
+        status: resp.status,
+        url: safeUrl,
+        account_env: accountId,
+        body: bodyText.slice(0, 500),
+      })
+    );
     throw new Error(
-      `Meta API ${resp.status} for ${path}: ${text.slice(0, 300)}`
+      `Meta API ${resp.status} for ${path}: ${bodyText.slice(0, 300)}`
     );
   }
-  return (await resp.json()) as T;
+
+  // Log success too — first 600 chars of the body so we can see whether
+  // Meta is returning empty data, all zeros, or actual rows.
+  console.log(
+    "[meta] ok",
+    JSON.stringify({
+      url: safeUrl,
+      account_env: accountId,
+      body_preview: bodyText.slice(0, 600),
+    })
+  );
+
+  try {
+    return JSON.parse(bodyText) as T;
+  } catch (err) {
+    throw new Error(
+      `Meta API returned non-JSON for ${path}: ${
+        err instanceof Error ? err.message : String(err)
+      }`
+    );
+  }
 }
 
 // -----------------------------------------------------------------------------
