@@ -106,14 +106,60 @@ input {
 .hero {
   flex: 1;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  justify-content: center;
   padding: 64px 32px 80px;
+}
+
+.hero-below {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
 }
 
 .hero-inner {
   max-width: 760px;
   margin: 0 auto;
   width: 100%;
+}
+
+/* ---------- Two-column hero ---------- */
+.hero-grid {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas:
+    "intro compare"
+    "form  compare";
+  column-gap: 64px;
+  row-gap: 36px;
+}
+
+.hero-intro,
+.hero-form,
+.compare {
+  min-width: 0;
+}
+
+.hero-intro {
+  grid-area: intro;
+  align-self: end;
+}
+
+.hero-form {
+  grid-area: form;
+  align-self: start;
+}
+
+.compare {
+  grid-area: compare;
+  align-self: center;
+}
+
+.hero-intro .lede {
+  margin-bottom: 0;
 }
 
 .hero-eyebrow {
@@ -303,6 +349,94 @@ input {
   color: var(--ink-soft);
 }
 
+/* ---------- Compare panel ---------- */
+.compare {
+  border: 1px solid var(--rule-hi);
+  background: var(--card);
+  padding: 26px 28px;
+}
+
+.compare-eyebrow {
+  margin-bottom: 14px;
+}
+
+.compare-eyebrow .dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: var(--ax);
+  margin-right: 10px;
+  vertical-align: 1px;
+}
+
+.compare-h {
+  font-family: var(--font-plex), sans-serif;
+  font-weight: 600;
+  font-size: 22px;
+  line-height: 1.2;
+  letter-spacing: -0.3px;
+  color: var(--ink);
+  margin-bottom: 22px;
+}
+
+.compare-grid {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.compare-head {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  font-weight: 500;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--rule-hi);
+}
+
+.compare-head-empty {
+  /* keeps the bottom border in line with the other headers */
+}
+
+.compare-head-sl {
+  color: var(--ax);
+}
+
+.compare-head-sl,
+.compare-cell-sl {
+  background: rgba(139, 44, 44, 0.05);
+}
+
+.compare-row-label {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  padding: 14px 12px 14px 0;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  align-items: flex-start;
+}
+
+.compare-cell {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.compare-cell-sl {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.compare-grid > div:nth-last-child(-n+4) {
+  border-bottom: 0;
+}
+
 /* ---------- Share buttons (post-signup) ---------- */
 .share {
   margin-top: 28px;
@@ -373,6 +507,26 @@ input {
 }
 
 /* ---------- Responsive ---------- */
+@media (max-width: 1024px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "intro"
+      "compare"
+      "form";
+    column-gap: 0;
+    row-gap: 40px;
+  }
+  .hero-intro,
+  .hero-form,
+  .compare {
+    align-self: stretch;
+  }
+  .hero-intro .lede {
+    display: none;
+  }
+}
+
 @media (max-width: 720px) {
   .topbar {
     padding: 18px 22px;
@@ -392,5 +546,24 @@ input {
   }
   .form button {
     padding: 14px 22px;
+  }
+  .compare {
+    padding: 22px 18px;
+  }
+  .compare-grid {
+    grid-template-columns: 48px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr);
+  }
+  .compare-row-label {
+    font-size: 9.5px;
+    padding: 12px 8px 12px 0;
+  }
+  .compare-head {
+    font-size: 9.5px;
+    letter-spacing: 0.4px;
+    padding: 10px 6px;
+  }
+  .compare-cell {
+    font-size: 11.5px;
+    padding: 12px 7px;
   }
 }
