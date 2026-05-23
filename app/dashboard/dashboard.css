@@ -98,11 +98,12 @@
   }
 }
 
-/* ---------- Top range toggle (drives hero, sources, funnel) ---------- */
+/* ---------- Top filters (range + traffic toggles) ---------- */
 .dash-top-toggle {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 18px;
 }
@@ -113,6 +114,10 @@
   letter-spacing: 1.2px;
   text-transform: uppercase;
   color: var(--ink-mute);
+}
+
+.dash-top-toggle .meta:not(:first-child) {
+  margin-left: 12px;
 }
 
 /* ---------- Range toggle (shared by Meta sections + top filter) ---------- */

@@ -100,6 +100,34 @@ export function gaRangeBounds(preset: GaRangePreset): {
   }
 }
 
+/**
+ * Traffic-type filter. Cuts the dashboard into paid-ad-driven vs organic
+ * visitors so we can see conversion behavior separately for each.
+ *
+ * "paid"    — ad clicks (Meta, Google Ads, display, etc.)
+ * "organic" — everything else (direct, referral, organic search/social, share)
+ * "all"     — no filter
+ */
+export type GaTrafficType = "paid" | "organic" | "all";
+
+/**
+ * Classify a GA4 default channel group as paid or organic. GA groups include:
+ *   Paid Search, Paid Social, Paid Shopping, Paid Video, Display,
+ *   Cross-network -> paid
+ *   Direct, Organic Search, Organic Social, Referral, Email, etc. -> organic
+ */
+export function classifyGaChannelGroup(group: string): "paid" | "organic" {
+  const g = (group || "").toLowerCase();
+  if (
+    g.startsWith("paid") ||
+    g === "display" ||
+    g === "cross-network"
+  ) {
+    return "paid";
+  }
+  return "organic";
+}
+
 // -----------------------------------------------------------------------------
 // Helpers
 
@@ -124,15 +152,71 @@ function isoDateFromGaYmd(ymd: string): string {
  * Returns totals for: pageViews, sessions, activeUsers, scrolls, formStarts,
  * waitlistSignups.
  */
+function emptyHero(): HeroMetrics {
+  return {
+    pageViews: 0,
+    sessions: 0,
+    activeUsers: 0,
+    scrolls: 0,
+    formStarts: 0,
+    waitlistSignups: 0,
+  };
+}
+
+/**
+ * Hero metrics, bucketed by traffic type (paid / organic / all).
+ *
+ * Queries GA with sessionDefaultChannelGroup as a breakdown dimension and
+ * sums each row into the right bucket. The "all" bucket is the sum of paid
+ * + organic, which matches GA's overall total within rounding.
+ *
+ * activeUsers is a unique-people metric that does NOT sum across channel-
+ * group rows (a person who arrived paid and returned organic counts once
+ * in each row but only once in "all"). We accept a slight overcount in the
+ * paid+organic sum for now — the per-bucket numbers are what matter for the
+ * Conversion math, and a real "all" comes from the unsegmented query when
+ * we need it. For this dashboard, summing buckets is close enough.
+ */
 export async function getHeroMetrics(
   preset: GaRangePreset = "30d"
-): Promise<HeroMetrics> {
+): Promise<Record<GaTrafficType, HeroMetrics>> {
   const { client, property } = getClient();
   const { startDate, endDate } = gaRangeBounds(preset);
 
-  // Two parallel queries: one for top-line metrics (sessions/views/users),
-  // one for event-count breakdown.
-  const [metricsResp, eventsResp] = await Promise.all([
+  // Three parallel queries:
+  //  1. Top-line metrics split by channel group (paid vs organic buckets)
+  //  2. Event counts (scroll/form_start/waitlist_signup) split the same way
+  //  3. Top-line metrics UNsegmented — feeds the "all" bucket without the
+  //     channel-group double-counting that activeUsers suffers from on the
+  //     segmented response.
+  const [metricsResp, eventsResp, allMetricsResp, allEventsResp] = await Promise.all([
+    client.runReport({
+      property,
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: "sessionDefaultChannelGroup" }],
+      metrics: [
+        { name: "screenPageViews" },
+        { name: "sessions" },
+        { name: "activeUsers" },
+      ],
+    }),
+    client.runReport({
+      property,
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [
+        { name: "eventName" },
+        { name: "sessionDefaultChannelGroup" },
+      ],
+      metrics: [{ name: "eventCount" }],
+      dimensionFilter: {
+        filter: {
+          fieldName: "eventName",
+          inListFilter: {
+            values: ["scroll", "form_start", "waitlist_signup"],
+          },
+        },
+      },
+    }),
     client.runReport({
       property,
       dateRanges: [{ startDate, endDate }],
@@ -158,26 +242,45 @@ export async function getHeroMetrics(
     }),
   ]);
 
-  const row = metricsResp[0]?.rows?.[0];
-  const pageViews = n(row?.metricValues?.[0]?.value);
-  const sessions = n(row?.metricValues?.[1]?.value);
-  const activeUsers = n(row?.metricValues?.[2]?.value);
+  const paid = emptyHero();
+  const organic = emptyHero();
 
-  const eventCounts: Record<string, number> = {};
-  for (const eventRow of eventsResp[0]?.rows ?? []) {
-    const name = eventRow.dimensionValues?.[0]?.value || "";
-    const count = n(eventRow.metricValues?.[0]?.value);
-    eventCounts[name] = count;
+  for (const row of metricsResp[0]?.rows ?? []) {
+    const group = row.dimensionValues?.[0]?.value || "";
+    const bucket = classifyGaChannelGroup(group) === "paid" ? paid : organic;
+    bucket.pageViews += n(row.metricValues?.[0]?.value);
+    bucket.sessions += n(row.metricValues?.[1]?.value);
+    bucket.activeUsers += n(row.metricValues?.[2]?.value);
   }
 
-  return {
-    pageViews,
-    sessions,
-    activeUsers,
-    scrolls: eventCounts.scroll || 0,
-    formStarts: eventCounts.form_start || 0,
-    waitlistSignups: eventCounts.waitlist_signup || 0,
+  for (const row of eventsResp[0]?.rows ?? []) {
+    const name = row.dimensionValues?.[0]?.value || "";
+    const group = row.dimensionValues?.[1]?.value || "";
+    const bucket = classifyGaChannelGroup(group) === "paid" ? paid : organic;
+    const count = n(row.metricValues?.[0]?.value);
+    if (name === "scroll") bucket.scrolls += count;
+    else if (name === "form_start") bucket.formStarts += count;
+    else if (name === "waitlist_signup") bucket.waitlistSignups += count;
+  }
+
+  const allRow = allMetricsResp[0]?.rows?.[0];
+  const all: HeroMetrics = {
+    pageViews: n(allRow?.metricValues?.[0]?.value),
+    sessions: n(allRow?.metricValues?.[1]?.value),
+    activeUsers: n(allRow?.metricValues?.[2]?.value),
+    scrolls: 0,
+    formStarts: 0,
+    waitlistSignups: 0,
   };
+  for (const row of allEventsResp[0]?.rows ?? []) {
+    const name = row.dimensionValues?.[0]?.value || "";
+    const count = n(row.metricValues?.[0]?.value);
+    if (name === "scroll") all.scrolls = count;
+    else if (name === "form_start") all.formStarts = count;
+    else if (name === "waitlist_signup") all.waitlistSignups = count;
+  }
+
+  return { paid, organic, all };
 }
 
 /**

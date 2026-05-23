@@ -7,6 +7,7 @@ import {
   type DailyTrendPoint,
   type TrafficSource,
   type GaRangePreset,
+  type GaTrafficType,
 } from "@/lib/ga";
 import { getWaitlistSummary, type WaitlistPerson } from "@/lib/cio";
 import {
@@ -30,7 +31,8 @@ export const dynamic = "force-dynamic";
 // Data loader
 
 interface DashboardData {
-  heroGa: Record<GaRangePreset, HeroMetrics | null>;
+  /** Hero GA metrics, indexed first by range then by traffic-type bucket. */
+  heroGa: Record<GaRangePreset, Record<GaTrafficType, HeroMetrics> | null>;
   heroGaError?: string;
   realtimeUsers: number | null;
   realtimeError?: string;
@@ -41,7 +43,8 @@ interface DashboardData {
   cioTotal: number | null;
   cioRecent: WaitlistPerson[];
   cioDailySignups: Record<string, number>;
-  cioSignupsByRange: Record<GaRangePreset, number>;
+  /** CIO signup totals bucketed by (range × traffic type). */
+  cioSignupsByRange: Record<GaTrafficType, Record<GaRangePreset, number>>;
   cioError?: string;
   metaSpend: Record<RangePreset, MetaInsight | null>;
   metaSpendError?: string;
@@ -52,21 +55,19 @@ interface DashboardData {
 }
 
 /**
- * Sum CIO daily signups falling inside a given GA range preset. Relies on
- * the same date math as GA's startDate/endDate so the toggle stays
- * consistent across data sources.
+ * Sum a daily-signups map over the UTC days that fall within a range preset.
+ * Used both for the unfiltered total and for the paid/organic buckets.
  */
-function cioSignupsForRange(
+function sumDailyOverRange(
   daily: Record<string, number>,
   preset: GaRangePreset,
-  total: number | null
+  fallbackTotal?: number
 ): number {
   if (preset === "all") {
-    // Prefer the canonical total — handles people without signedUpAt that
-    // would otherwise be missing from the daily breakdown.
-    return total ?? Object.values(daily).reduce((a, b) => a + b, 0);
+    return (
+      fallbackTotal ?? Object.values(daily).reduce((a, b) => a + b, 0)
+    );
   }
-  // Build the inclusive window in UTC date strings.
   const days = preset === "24h" ? 2 : preset === "7d" ? 7 : 30;
   const now = new Date();
   let sum = 0;
@@ -133,7 +134,6 @@ async function loadData(): Promise<DashboardData> {
   const errMsg = (r: PromiseRejectedResult) =>
     r.reason instanceof Error ? r.reason.message : String(r.reason);
 
-  // First non-null GA hero error becomes the dashboard's banner.
   const heroGaRejected = [
     heroGa24hRes,
     heroGa7dRes,
@@ -150,7 +150,39 @@ async function loadData(): Promise<DashboardData> {
 
   const cioDailySignups =
     cioRes.status === "fulfilled" ? cioRes.value.dailySignups : {};
+  const cioDailyByTraffic =
+    cioRes.status === "fulfilled"
+      ? cioRes.value.dailySignupsByTraffic
+      : { paid: {}, organic: {} };
+  const cioTotalByTraffic =
+    cioRes.status === "fulfilled"
+      ? cioRes.value.totalByTraffic
+      : { paid: 0, organic: 0, all: 0 };
   const cioTotal = cioRes.status === "fulfilled" ? cioRes.value.total : null;
+
+  const ranges: GaRangePreset[] = ["24h", "7d", "30d", "all"];
+  const cioSignupsByRange: Record<GaTrafficType, Record<GaRangePreset, number>> = {
+    paid: {} as Record<GaRangePreset, number>,
+    organic: {} as Record<GaRangePreset, number>,
+    all: {} as Record<GaRangePreset, number>,
+  };
+  for (const r of ranges) {
+    cioSignupsByRange.paid[r] = sumDailyOverRange(
+      cioDailyByTraffic.paid,
+      r,
+      cioTotalByTraffic.paid
+    );
+    cioSignupsByRange.organic[r] = sumDailyOverRange(
+      cioDailyByTraffic.organic,
+      r,
+      cioTotalByTraffic.organic
+    );
+    cioSignupsByRange.all[r] = sumDailyOverRange(
+      cioDailySignups,
+      r,
+      cioTotal ?? undefined
+    );
+  }
 
   return {
     heroGa: {
@@ -176,12 +208,7 @@ async function loadData(): Promise<DashboardData> {
     cioTotal,
     cioRecent: cioRes.status === "fulfilled" ? cioRes.value.recent : [],
     cioDailySignups,
-    cioSignupsByRange: {
-      "24h": cioSignupsForRange(cioDailySignups, "24h", cioTotal),
-      "7d": cioSignupsForRange(cioDailySignups, "7d", cioTotal),
-      "30d": cioSignupsForRange(cioDailySignups, "30d", cioTotal),
-      "all": cioSignupsForRange(cioDailySignups, "all", cioTotal),
-    },
+    cioSignupsByRange,
     cioError: cioRes.status === "rejected" ? errMsg(cioRes) : undefined,
     metaSpend: {
       "24h": metaSpend24hRes.status === "fulfilled" ? metaSpend24hRes.value : null,
@@ -239,39 +266,11 @@ async function loadData(): Promise<DashboardData> {
 }
 
 // -----------------------------------------------------------------------------
-// Formatters
+// Formatters used here (more live in TopSections.tsx)
 
 function fmt(n: number | null): string {
   if (n == null) return "—";
   return n.toLocaleString("en-US");
-}
-
-function truncate(s: string, max: number): string {
-  if (s.length <= max) return s;
-  return s.slice(0, max - 1) + "…";
-}
-
-function maskEmail(email: string): string {
-  const [local, domain] = email.split("@");
-  if (!domain) return email;
-  if (local.length <= 2) return `${local[0]}*@${domain}`;
-  return `${local.slice(0, 2)}${"*".repeat(Math.max(1, local.length - 2))}@${domain}`;
-}
-
-function timeAgo(iso?: string): string {
-  if (!iso) return "—";
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return "—";
-  const seconds = Math.max(0, Math.floor((Date.now() - then) / 1000));
-  if (seconds < 60) return `${seconds}s ago`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
-  const months = Math.floor(days / 30);
-  return `${months}mo ago`;
 }
 
 function shortDate(yyyymmdd: string): string {
@@ -285,6 +284,9 @@ function shortDate(yyyymmdd: string): string {
   return `${month} ${day}`;
 }
 
+// Suppress unused-import warning on fmt — used inside the trend chart.
+void fmt;
+
 // -----------------------------------------------------------------------------
 // Page
 
@@ -293,6 +295,8 @@ export default async function DashboardPage() {
 
   // Overlay CIO daily signups onto the GA trend so the chart's red bars
   // reflect actual people (post-deletes), not raw GA event counts.
+  // Trend chart shows ALL traffic — it's a long-time-series visualization;
+  // we deliberately don't filter it by the paid/organic toggle (yet).
   const trendForChart = data.trend.map((point) => ({
     ...point,
     signups: data.cioDailySignups[point.date] || 0,
@@ -323,7 +327,8 @@ export default async function DashboardPage() {
       </header>
 
       <main className="dash-main">
-        {/* Hero + traffic sources + funnel, all driven by one range toggle */}
+        {/* Hero + traffic sources + funnel + recent signups, all driven by
+            the range + traffic-type toggles. */}
         <TopSections
           heroGa={data.heroGa}
           heroGaError={data.heroGaError}
@@ -333,10 +338,12 @@ export default async function DashboardPage() {
           cioTotal={data.cioTotal}
           cioError={data.cioError}
           realtimeUsers={data.realtimeUsers}
+          cioRecent={data.cioRecent}
         />
 
-        {/* Daily trend — pinned to 30 days; this is a time-series, the range
-            toggle doesn't apply meaningfully here. */}
+        {/* Daily trend — pinned to 30 days, unfiltered by traffic type.
+            This is a long-time-series visualization; the toggles up top
+            apply to point-in-time metrics. */}
         <section className="dash-section">
           <div className="header">
             <h2>Daily sessions &amp; signups · last 30 days</h2>
@@ -389,87 +396,12 @@ export default async function DashboardPage() {
           campaignsError={data.metaCampaignsError}
           adsError={data.metaAdsError}
         />
-
-        {/* Recent signups */}
-        <section className="dash-section">
-          <div className="header">
-            <h2>Recent signups · last 20</h2>
-            <div className="meta">Customer.io</div>
-          </div>
-          <div className="dash-table-wrap">
-            <table className="dash-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Source / Campaign</th>
-                  <th>When</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.cioRecent.length === 0 ? (
-                  <tr>
-                    <td className="empty" colSpan={4}>
-                      {data.cioError ? data.cioError : "No signups yet."}
-                    </td>
-                  </tr>
-                ) : (
-                  data.cioRecent.map((p) => (
-                    <tr key={p.cioId}>
-                      <td>
-                        {p.firstName || "—"}
-                        {p.lastName ? ` ${p.lastName}` : ""}
-                      </td>
-                      <td className="email">{maskEmail(p.email)}</td>
-                      <td className="source">
-                        <SourceCell person={p} />
-                      </td>
-                      <td className="when">{timeAgo(p.signedUpAt)}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
       </main>
 
       <footer className="dash-footer">
         <div>SpeedLearning · Internal dashboard</div>
         <div>Cache TTL 60s · GA4 + Customer.io</div>
       </footer>
-    </div>
-  );
-}
-
-function SourceCell({ person }: { person: WaitlistPerson }) {
-  // Top line: source channel. utm_source (paid/social) > "referral" > "direct".
-  const primary =
-    person.utmSource || (person.referredBy ? "referral" : null) || "direct";
-
-  // Stacked detail lines beneath the source. Meta's URL-parameter convention
-  // maps utm_campaign->campaign, utm_term->adset, utm_content->ad name. We
-  // label each line so non-Meta sources (Google, referrals) still read clearly.
-  const detail: Array<{ label: string; value: string }> = [];
-  if (person.utmCampaign) detail.push({ label: "camp", value: person.utmCampaign });
-  if (person.utmTerm) detail.push({ label: "adset", value: person.utmTerm });
-  if (person.utmContent) detail.push({ label: "ad", value: person.utmContent });
-  if (detail.length === 0 && person.referredBy) {
-    detail.push({ label: "ref", value: person.referredBy.slice(0, 8) });
-  }
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <span style={{ color: "var(--ink)" }}>{primary}</span>
-      {detail.map((d) => (
-        <span
-          key={d.label}
-          style={{ color: "var(--ink-mute)", fontSize: 11, letterSpacing: 0.3 }}
-        >
-          <span style={{ opacity: 0.65, marginRight: 6 }}>{d.label}</span>
-          {truncate(d.value, 44)}
-        </span>
-      ))}
     </div>
   );
 }

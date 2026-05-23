@@ -77,6 +77,13 @@ export interface WaitlistPerson {
   utmTerm?: string;
   utmContent?: string;
   referredBy?: string;
+  /** True if fbclid was present on the signup landing URL (came from a
+   *  Meta ad click). Used together with utm_medium to classify paid vs
+   *  organic signups in the dashboard. */
+  fbclidPresent?: boolean;
+  /** Computed at hydrate time. "paid" if utm_medium signals a paid channel
+   *  or fbclid was present; "organic" otherwise. */
+  trafficType: "paid" | "organic";
   /** True if the email belongs to an internal team domain (e.g.
    *  @bowskyventures.com). Filtered out of dashboard counts; left in CIO
    *  so we can verify the confirmation email flow without polluting metrics. */
@@ -89,6 +96,18 @@ export interface WaitlistSummary {
   /** Map of "YYYY-MM-DD" (UTC) -> signup count. Used to draw the dashboard
    *  daily-trend chart from the canonical CIO source instead of GA event counts. */
   dailySignups: Record<string, number>;
+  /** Same map but split by classified traffic type. The dashboard's
+   *  paid/organic/all filter consults these to break out signup counts. */
+  dailySignupsByTraffic: {
+    paid: Record<string, number>;
+    organic: Record<string, number>;
+  };
+  /** Total counts per traffic-type bucket. all === paid + organic. */
+  totalByTraffic: {
+    paid: number;
+    organic: number;
+    all: number;
+  };
 }
 
 interface SearchIdentifier {
@@ -127,6 +146,37 @@ function attrString(
 function fromTimestampSeconds(seconds?: number): string | undefined {
   if (!seconds || !Number.isFinite(seconds)) return undefined;
   return new Date(seconds * 1000).toISOString();
+}
+
+/**
+ * Classify a CIO waitlist person as paid- or organic-acquired based on the
+ * acquisition attributes captured at signup.
+ *
+ * Paid signals (any one wins):
+ *   - utm_medium in {paid_social, cpc, ppc, paid_search, display, paid}
+ *   - fbclid present (came directly from a Meta ad click, regardless of UTMs)
+ *
+ * Everything else is organic: direct, referrals, organic search/social,
+ * shared links, etc. The classification matches the GA channel-group
+ * bucketing so paid/organic comparisons line up across data sources.
+ */
+const PAID_MEDIUMS = new Set([
+  "paid_social",
+  "cpc",
+  "ppc",
+  "paid_search",
+  "display",
+  "paid",
+]);
+
+export function classifyCioTraffic(args: {
+  utmMedium?: string;
+  fbclidPresent?: boolean;
+}): "paid" | "organic" {
+  const medium = (args.utmMedium || "").toLowerCase();
+  if (medium && PAID_MEDIUMS.has(medium)) return "paid";
+  if (args.fbclidPresent) return "paid";
+  return "organic";
 }
 
 // -----------------------------------------------------------------------------
@@ -191,6 +241,10 @@ export async function getCustomerByCioId(
     const internalRaw = attrString(attrs, "internal");
     const internal = internalRaw === "true";
 
+    const utmMedium = attrString(attrs, "utm_medium");
+    const fbclidPresent = !!attrString(attrs, "fbclid");
+    const trafficType = classifyCioTraffic({ utmMedium, fbclidPresent });
+
     return {
       cioId,
       email:
@@ -202,11 +256,13 @@ export async function getCustomerByCioId(
       source: attrString(attrs, "waitlist_source"),
       signedUpAt,
       utmSource: attrString(attrs, "utm_source"),
-      utmMedium: attrString(attrs, "utm_medium"),
+      utmMedium,
       utmCampaign: attrString(attrs, "utm_campaign"),
       utmTerm: attrString(attrs, "utm_term"),
       utmContent: attrString(attrs, "utm_content"),
       referredBy: attrString(attrs, "referred_by"),
+      fbclidPresent,
+      trafficType,
       internal,
     };
   } catch {
@@ -258,17 +314,36 @@ export async function getWaitlistSummary(
 
   const total = people.length;
 
-  // Group by UTC date for the daily chart.
+  // Group by UTC date for the daily chart, and again split by traffic type
+  // so the dashboard's paid/organic/all filter has pre-aggregated data.
   const dailySignups: Record<string, number> = {};
+  const dailySignupsByTraffic = {
+    paid: {} as Record<string, number>,
+    organic: {} as Record<string, number>,
+  };
+  let paidTotal = 0;
+  let organicTotal = 0;
+
   for (const p of people) {
+    if (p.trafficType === "paid") paidTotal++;
+    else organicTotal++;
+
     if (!p.signedUpAt) continue;
     const dateStr = p.signedUpAt.slice(0, 10); // "2026-05-21"
     dailySignups[dateStr] = (dailySignups[dateStr] || 0) + 1;
+    const trafficMap = dailySignupsByTraffic[p.trafficType];
+    trafficMap[dateStr] = (trafficMap[dateStr] || 0) + 1;
   }
 
   return {
     total,
     recent: people.slice(0, recentLimit),
     dailySignups,
+    dailySignupsByTraffic,
+    totalByTraffic: {
+      paid: paidTotal,
+      organic: organicTotal,
+      all: total,
+    },
   };
 }
