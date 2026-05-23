@@ -6,6 +6,7 @@ import {
   type HeroMetrics,
   type DailyTrendPoint,
   type TrafficSource,
+  type GaRangePreset,
 } from "@/lib/ga";
 import { getWaitlistSummary, type WaitlistPerson } from "@/lib/cio";
 import {
@@ -18,6 +19,7 @@ import {
   type RangePreset,
 } from "@/lib/meta";
 import MetaSections from "./MetaSections";
+import TopSections from "./TopSections";
 
 // Render fresh on each request. Internal dashboard sees ~dozens of loads
 // per day, so we don't bother with ISR or revalidate windows; both would
@@ -28,17 +30,18 @@ export const dynamic = "force-dynamic";
 // Data loader
 
 interface DashboardData {
-  heroGa: HeroMetrics | null;
+  heroGa: Record<GaRangePreset, HeroMetrics | null>;
   heroGaError?: string;
   realtimeUsers: number | null;
   realtimeError?: string;
   trend: DailyTrendPoint[];
   trendError?: string;
-  sources: TrafficSource[];
+  sources: Record<GaRangePreset, TrafficSource[]>;
   sourcesError?: string;
   cioTotal: number | null;
   cioRecent: WaitlistPerson[];
   cioDailySignups: Record<string, number>;
+  cioSignupsByRange: Record<GaRangePreset, number>;
   cioError?: string;
   metaSpend: Record<RangePreset, MetaInsight | null>;
   metaSpendError?: string;
@@ -48,12 +51,46 @@ interface DashboardData {
   metaAdsError?: string;
 }
 
+/**
+ * Sum CIO daily signups falling inside a given GA range preset. Relies on
+ * the same date math as GA's startDate/endDate so the toggle stays
+ * consistent across data sources.
+ */
+function cioSignupsForRange(
+  daily: Record<string, number>,
+  preset: GaRangePreset,
+  total: number | null
+): number {
+  if (preset === "all") {
+    // Prefer the canonical total — handles people without signedUpAt that
+    // would otherwise be missing from the daily breakdown.
+    return total ?? Object.values(daily).reduce((a, b) => a + b, 0);
+  }
+  // Build the inclusive window in UTC date strings.
+  const days = preset === "24h" ? 2 : preset === "7d" ? 7 : 30;
+  const now = new Date();
+  let sum = 0;
+  for (let i = 0; i < days; i++) {
+    const d = new Date(now);
+    d.setUTCDate(now.getUTCDate() - i);
+    const dateStr = d.toISOString().slice(0, 10);
+    sum += daily[dateStr] || 0;
+  }
+  return sum;
+}
+
 async function loadData(): Promise<DashboardData> {
   const [
-    heroRes,
+    heroGa24hRes,
+    heroGa7dRes,
+    heroGa30dRes,
+    heroGaAllRes,
     realtimeRes,
     trendRes,
-    sourcesRes,
+    sources24hRes,
+    sources7dRes,
+    sources30dRes,
+    sourcesAllRes,
     cioRes,
     metaSpend24hRes,
     metaSpend7dRes,
@@ -68,10 +105,16 @@ async function loadData(): Promise<DashboardData> {
     metaAds30dRes,
     metaAdsAllRes,
   ] = await Promise.allSettled([
-    getHeroMetrics("30daysAgo", "today"),
+    getHeroMetrics("24h"),
+    getHeroMetrics("7d"),
+    getHeroMetrics("30d"),
+    getHeroMetrics("all"),
     getRealtimeActiveUsers(),
     getDailyTrend(30),
-    getTrafficSources("30daysAgo", "today", 10),
+    getTrafficSources("24h", 10),
+    getTrafficSources("7d", 10),
+    getTrafficSources("30d", 10),
+    getTrafficSources("all", 10),
     getWaitlistSummary(20),
     getAccountInsights("24h"),
     getAccountInsights("7d"),
@@ -90,22 +133,55 @@ async function loadData(): Promise<DashboardData> {
   const errMsg = (r: PromiseRejectedResult) =>
     r.reason instanceof Error ? r.reason.message : String(r.reason);
 
+  // First non-null GA hero error becomes the dashboard's banner.
+  const heroGaRejected = [
+    heroGa24hRes,
+    heroGa7dRes,
+    heroGa30dRes,
+    heroGaAllRes,
+  ].find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
+
+  const sourcesRejected = [
+    sources24hRes,
+    sources7dRes,
+    sources30dRes,
+    sourcesAllRes,
+  ].find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
+
+  const cioDailySignups =
+    cioRes.status === "fulfilled" ? cioRes.value.dailySignups : {};
+  const cioTotal = cioRes.status === "fulfilled" ? cioRes.value.total : null;
+
   return {
-    heroGa: heroRes.status === "fulfilled" ? heroRes.value : null,
-    heroGaError: heroRes.status === "rejected" ? errMsg(heroRes) : undefined,
+    heroGa: {
+      "24h": heroGa24hRes.status === "fulfilled" ? heroGa24hRes.value : null,
+      "7d": heroGa7dRes.status === "fulfilled" ? heroGa7dRes.value : null,
+      "30d": heroGa30dRes.status === "fulfilled" ? heroGa30dRes.value : null,
+      "all": heroGaAllRes.status === "fulfilled" ? heroGaAllRes.value : null,
+    },
+    heroGaError: heroGaRejected ? errMsg(heroGaRejected) : undefined,
     realtimeUsers:
       realtimeRes.status === "fulfilled" ? realtimeRes.value.activeUsers : null,
     realtimeError:
       realtimeRes.status === "rejected" ? errMsg(realtimeRes) : undefined,
     trend: trendRes.status === "fulfilled" ? trendRes.value : [],
     trendError: trendRes.status === "rejected" ? errMsg(trendRes) : undefined,
-    sources: sourcesRes.status === "fulfilled" ? sourcesRes.value : [],
-    sourcesError:
-      sourcesRes.status === "rejected" ? errMsg(sourcesRes) : undefined,
-    cioTotal: cioRes.status === "fulfilled" ? cioRes.value.total : null,
+    sources: {
+      "24h": sources24hRes.status === "fulfilled" ? sources24hRes.value : [],
+      "7d": sources7dRes.status === "fulfilled" ? sources7dRes.value : [],
+      "30d": sources30dRes.status === "fulfilled" ? sources30dRes.value : [],
+      "all": sourcesAllRes.status === "fulfilled" ? sourcesAllRes.value : [],
+    },
+    sourcesError: sourcesRejected ? errMsg(sourcesRejected) : undefined,
+    cioTotal,
     cioRecent: cioRes.status === "fulfilled" ? cioRes.value.recent : [],
-    cioDailySignups:
-      cioRes.status === "fulfilled" ? cioRes.value.dailySignups : {},
+    cioDailySignups,
+    cioSignupsByRange: {
+      "24h": cioSignupsForRange(cioDailySignups, "24h", cioTotal),
+      "7d": cioSignupsForRange(cioDailySignups, "7d", cioTotal),
+      "30d": cioSignupsForRange(cioDailySignups, "30d", cioTotal),
+      "all": cioSignupsForRange(cioDailySignups, "all", cioTotal),
+    },
     cioError: cioRes.status === "rejected" ? errMsg(cioRes) : undefined,
     metaSpend: {
       "24h": metaSpend24hRes.status === "fulfilled" ? metaSpend24hRes.value : null,
@@ -170,24 +246,9 @@ function fmt(n: number | null): string {
   return n.toLocaleString("en-US");
 }
 
-function money(n: number | null | undefined): string {
-  if (n == null || !Number.isFinite(n)) return "—";
-  return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-function pct(n: number | null | undefined): string {
-  if (n == null || !Number.isFinite(n)) return "—";
-  return `${n.toFixed(2)}%`;
-}
-
 function truncate(s: string, max: number): string {
   if (s.length <= max) return s;
   return s.slice(0, max - 1) + "…";
-}
-
-function statusLabel(status: string): string {
-  // Meta status enums: ACTIVE, PAUSED, ARCHIVED, DELETED, etc.
-  return status.charAt(0) + status.slice(1).toLowerCase();
 }
 
 function maskEmail(email: string): string {
@@ -230,20 +291,6 @@ function shortDate(yyyymmdd: string): string {
 export default async function DashboardPage() {
   const data = await loadData();
 
-  // Conversion rate uses Customer.io's waitlist=true count as the canonical
-  // signup number (it's the source of truth — deduped, deletions reflected,
-  // never includes test events that were cleaned up). Denominator is GA's
-  // active users over the same window, which is closer to "unique visitors"
-  // than sessions. Falls back to sessions if active users is unavailable.
-  const visitors =
-    (data.heroGa?.activeUsers ?? 0) > 0
-      ? data.heroGa!.activeUsers
-      : data.heroGa?.sessions ?? 0;
-  const cvr =
-    data.cioTotal != null && visitors > 0
-      ? ((data.cioTotal / visitors) * 100).toFixed(1)
-      : null;
-
   // Overlay CIO daily signups onto the GA trend so the chart's red bars
   // reflect actual people (post-deletes), not raw GA event counts.
   const trendForChart = data.trend.map((point) => ({
@@ -276,47 +323,20 @@ export default async function DashboardPage() {
       </header>
 
       <main className="dash-main">
-        {/* Hero metrics */}
-        <div className="dash-hero">
-          <div className="cell">
-            <div className="label">Waitlist Signups</div>
-            <div className="value accent">{fmt(data.cioTotal)}</div>
-            <div className="sub">Customer.io · waitlist=true</div>
-          </div>
-          <div className="cell">
-            <div className="label">Sessions · 30d</div>
-            <div className="value">{fmt(data.heroGa?.sessions ?? null)}</div>
-            <div className="sub">Page views: {fmt(data.heroGa?.pageViews ?? null)}</div>
-          </div>
-          <div className="cell">
-            <div className="label">Conversion · 30d</div>
-            <div className="value">{cvr ? `${cvr}%` : "—"}</div>
-            <div className="sub">
-              {fmt(data.cioTotal)} signups / {fmt(visitors)} visitors
-            </div>
-          </div>
-          <div className="cell">
-            <div className="label">Active right now</div>
-            <div className="value">{fmt(data.realtimeUsers)}</div>
-            <div className="sub">Last 30 min</div>
-          </div>
-        </div>
+        {/* Hero + traffic sources + funnel, all driven by one range toggle */}
+        <TopSections
+          heroGa={data.heroGa}
+          heroGaError={data.heroGaError}
+          sources={data.sources}
+          sourcesError={data.sourcesError}
+          cioSignupsByRange={data.cioSignupsByRange}
+          cioTotal={data.cioTotal}
+          cioError={data.cioError}
+          realtimeUsers={data.realtimeUsers}
+        />
 
-        {/* Error banners */}
-        {data.cioError && (
-          <div className="dash-error">
-            <strong>Customer.io</strong>
-            {data.cioError}
-          </div>
-        )}
-        {data.heroGaError && (
-          <div className="dash-error">
-            <strong>GA4 — metrics</strong>
-            {data.heroGaError}
-          </div>
-        )}
-
-        {/* Daily trend */}
+        {/* Daily trend — pinned to 30 days; this is a time-series, the range
+            toggle doesn't apply meaningfully here. */}
         <section className="dash-section">
           <div className="header">
             <h2>Daily sessions &amp; signups · last 30 days</h2>
@@ -360,64 +380,6 @@ export default async function DashboardPage() {
           )}
         </section>
 
-        {/* Two-column: sources + funnel */}
-        <div className="dash-row-2">
-          <section className="dash-section">
-            <div className="header">
-              <h2>Top traffic sources · 30d</h2>
-              <div className="meta">by sessions</div>
-            </div>
-            <div className="dash-source-list">
-              {data.sources.length === 0 ? (
-                <div className="empty" style={{ padding: 24, textAlign: "center" }}>
-                  {data.sourcesError ? data.sourcesError : "No data yet."}
-                </div>
-              ) : (
-                data.sources.map((s, i) => (
-                  <div key={`${s.source}-${s.medium}-${i}`} className="dash-source-row">
-                    <div className="name">
-                      {s.source}
-                      <span className="medium">/ {s.medium}</span>
-                    </div>
-                    <div className="count">{fmt(s.sessions)}</div>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-
-          <section className="dash-section">
-            <div className="header">
-              <h2>Funnel · 30d</h2>
-              <div className="meta">GA4 events</div>
-            </div>
-            <div className="body">
-              <FunnelRow
-                label="Page views"
-                value={data.heroGa?.pageViews ?? null}
-                base={data.heroGa?.pageViews ?? null}
-              />
-              <FunnelRow
-                label="Form starts"
-                value={data.heroGa?.formStarts ?? null}
-                base={data.heroGa?.pageViews ?? null}
-              />
-              <FunnelRow
-                label="Waitlist signups"
-                value={data.cioTotal}
-                base={data.heroGa?.pageViews ?? null}
-                accent
-              />
-              <FunnelRow
-                label="Scroll events"
-                value={data.heroGa?.scrolls ?? null}
-                base={data.heroGa?.pageViews ?? null}
-                subtle
-              />
-            </div>
-          </section>
-        </div>
-
         {/* Meta — three sections with a shared time-range toggle */}
         <MetaSections
           spend={data.metaSpend}
@@ -434,39 +396,41 @@ export default async function DashboardPage() {
             <h2>Recent signups · last 20</h2>
             <div className="meta">Customer.io</div>
           </div>
-          <table className="dash-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Source / Campaign</th>
-                <th>When</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.cioRecent.length === 0 ? (
+          <div className="dash-table-wrap">
+            <table className="dash-table">
+              <thead>
                 <tr>
-                  <td className="empty" colSpan={4}>
-                    {data.cioError ? data.cioError : "No signups yet."}
-                  </td>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Source / Campaign</th>
+                  <th>When</th>
                 </tr>
-              ) : (
-                data.cioRecent.map((p) => (
-                  <tr key={p.cioId}>
-                    <td>
-                      {p.firstName || "—"}
-                      {p.lastName ? ` ${p.lastName}` : ""}
+              </thead>
+              <tbody>
+                {data.cioRecent.length === 0 ? (
+                  <tr>
+                    <td className="empty" colSpan={4}>
+                      {data.cioError ? data.cioError : "No signups yet."}
                     </td>
-                    <td className="email">{maskEmail(p.email)}</td>
-                    <td className="source">
-                      <SourceCell person={p} />
-                    </td>
-                    <td className="when">{timeAgo(p.signedUpAt)}</td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  data.cioRecent.map((p) => (
+                    <tr key={p.cioId}>
+                      <td>
+                        {p.firstName || "—"}
+                        {p.lastName ? ` ${p.lastName}` : ""}
+                      </td>
+                      <td className="email">{maskEmail(p.email)}</td>
+                      <td className="source">
+                        <SourceCell person={p} />
+                      </td>
+                      <td className="when">{timeAgo(p.signedUpAt)}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </section>
       </main>
 
@@ -506,71 +470,6 @@ function SourceCell({ person }: { person: WaitlistPerson }) {
           {truncate(d.value, 44)}
         </span>
       ))}
-    </div>
-  );
-}
-
-function FunnelRow({
-  label,
-  value,
-  base,
-  accent,
-  subtle,
-}: {
-  label: string;
-  value: number | null;
-  base: number | null;
-  accent?: boolean;
-  subtle?: boolean;
-}) {
-  const pct =
-    value != null && base != null && base > 0
-      ? `${((value / base) * 100).toFixed(1)}%`
-      : "—";
-
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "1fr auto auto",
-        gap: 18,
-        alignItems: "baseline",
-        padding: "10px 0",
-        borderTop: "1px solid var(--rule)",
-      }}
-    >
-      <div
-        style={{
-          fontFamily: "var(--font-mono), monospace",
-          fontSize: 12.5,
-          letterSpacing: 0.4,
-          color: subtle ? "var(--ink-mute)" : "var(--ink)",
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontFamily: "var(--font-mono), monospace",
-          fontSize: 14,
-          color: accent ? "var(--ax)" : "var(--ink)",
-          fontVariantNumeric: "tabular-nums",
-        }}
-      >
-        {fmt(value)}
-      </div>
-      <div
-        style={{
-          fontFamily: "var(--font-mono), monospace",
-          fontSize: 11,
-          letterSpacing: 0.6,
-          color: "var(--ink-mute)",
-          minWidth: 50,
-          textAlign: "right",
-        }}
-      >
-        {pct}
-      </div>
     </div>
   );
 }

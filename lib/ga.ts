@@ -72,6 +72,34 @@ export interface RealtimeSnapshot {
   activeUsers: number;
 }
 
+/**
+ * Range presets driving the dashboard's top filter. Mirror the Meta side
+ * so a "24h" toggle returns comparable windows across both data sources.
+ *
+ *   "24h" — yesterday + today (rolling-ish 24h, robust to GA timezone slop)
+ *   "7d"  — last 7 calendar days, today inclusive
+ *   "30d" — last 30 calendar days, today inclusive
+ *   "all" — lifetime, using a sentinel start date well before the property
+ *           was created
+ */
+export type GaRangePreset = "24h" | "7d" | "30d" | "all";
+
+export function gaRangeBounds(preset: GaRangePreset): {
+  startDate: string;
+  endDate: string;
+} {
+  switch (preset) {
+    case "24h":
+      return { startDate: "yesterday", endDate: "today" };
+    case "7d":
+      return { startDate: "6daysAgo", endDate: "today" };
+    case "30d":
+      return { startDate: "29daysAgo", endDate: "today" };
+    case "all":
+      return { startDate: "2020-01-01", endDate: "today" };
+  }
+}
+
 // -----------------------------------------------------------------------------
 // Helpers
 
@@ -97,10 +125,10 @@ function isoDateFromGaYmd(ymd: string): string {
  * waitlistSignups.
  */
 export async function getHeroMetrics(
-  startDate: string = "30daysAgo",
-  endDate: string = "today"
+  preset: GaRangePreset = "30d"
 ): Promise<HeroMetrics> {
   const { client, property } = getClient();
+  const { startDate, endDate } = gaRangeBounds(preset);
 
   // Two parallel queries: one for top-line metrics (sessions/views/users),
   // one for event-count breakdown.
@@ -218,11 +246,11 @@ export async function getDailyTrend(days: number = 30): Promise<DailyTrendPoint[
  * Traffic source/medium breakdown.
  */
 export async function getTrafficSources(
-  startDate: string = "30daysAgo",
-  endDate: string = "today",
+  preset: GaRangePreset = "30d",
   limit: number = 10
 ): Promise<TrafficSource[]> {
   const { client, property } = getClient();
+  const { startDate, endDate } = gaRangeBounds(preset);
 
   const [resp] = await client.runReport({
     property,

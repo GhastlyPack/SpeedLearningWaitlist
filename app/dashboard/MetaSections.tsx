@@ -144,6 +144,7 @@ export default function MetaSections({
           <h2>Top campaigns · {descriptiveLabel(range)}</h2>
           <div className="meta">by leads</div>
         </div>
+        <div className="dash-table-wrap">
         <table className="dash-table">
           <thead>
             <tr>
@@ -184,6 +185,7 @@ export default function MetaSections({
             )}
           </tbody>
         </table>
+        </div>
       </section>
 
       {/* Top ads */}
@@ -192,6 +194,7 @@ export default function MetaSections({
           <h2>Top ad creatives · {descriptiveLabel(range)}</h2>
           <div className="meta">by leads</div>
         </div>
+        <div className="dash-table-wrap">
         <table className="dash-table">
           <thead>
             <tr>
@@ -236,6 +239,7 @@ export default function MetaSections({
             )}
           </tbody>
         </table>
+        </div>
       </section>
     </>
   );

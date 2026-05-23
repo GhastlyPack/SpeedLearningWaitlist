@@ -98,7 +98,24 @@
   }
 }
 
-/* ---------- Range toggle (Meta sections) ---------- */
+/* ---------- Top range toggle (drives hero, sources, funnel) ---------- */
+.dash-top-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.dash-top-toggle .meta {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+
+/* ---------- Range toggle (shared by Meta sections + top filter) ---------- */
 .range-toggle {
   display: inline-flex;
   border: 1px solid var(--rule-hi);
@@ -187,6 +204,15 @@
 
 .dash-row-2 .dash-section {
   margin-bottom: 0;
+}
+
+/* ---------- Table scroll wrapper ----------
+   Wide tables (Top campaigns, Top ad creatives, Recent signups) overflow on
+   narrow viewports. Wrapping each in .dash-table-wrap with overflow-x:auto
+   lets the user swipe horizontally instead of having columns clipped. */
+.dash-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ---------- Recent signups table ---------- */
@@ -354,7 +380,32 @@
 }
 
 @media (max-width: 720px) {
-  .dash-topbar { padding: 18px 22px; }
+  .dash-topbar {
+    padding: 18px 22px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
   .dash-main { padding: 22px; }
   .dash-footer { padding: 18px 22px; flex-direction: column; gap: 6px; }
+
+  /* Force the wide tables wider than the viewport so dash-table-wrap kicks
+     in and gives the user a horizontal swipe instead of clipping. */
+  .dash-table { min-width: 520px; }
+
+  /* Section headers in narrow mode: let the title wrap and keep the toggle
+     on its own line so it doesn't shrink awkwardly. */
+  .dash-section .header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  /* Top range toggle anchors to the left in narrow mode to match the
+     overall left-aligned header layout. */
+  .dash-top-toggle { justify-content: flex-start; }
+
+  /* Hero cells stack to single column for cleanest read on phones. */
+  .dash-hero { grid-template-columns: 1fr; }
+  .dash-hero .cell .value { font-size: 30px; }
 }
