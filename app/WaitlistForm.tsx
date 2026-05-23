@@ -104,33 +104,17 @@ export default function WaitlistForm() {
       }
     }
 
-    // -- Meta Pixel (browser) — fires the "Lead" standard event -------------
-    if (!internal) {
-      try {
-        if (typeof window !== "undefined" && window.fbq) {
-          window.fbq(
-            "track",
-            "Lead",
-            {
-              content_name: "SpeedLearning Waitlist",
-              value: 0,
-              currency: "USD",
-            },
-            { eventID: eventId }
-          );
-        } else if (process.env.NODE_ENV !== "production") {
-          console.warn(
-            "[waitlist] fbq not loaded — Meta Pixel snippet hasn't initialized yet."
-          );
-        }
-      } catch (err) {
-        if (process.env.NODE_ENV !== "production") {
-          console.warn("[waitlist] fbq call threw", err);
-        }
-      }
-    }
+    // Meta Lead event is fired SERVER-SIDE only via /api/meta-capi below.
+    // We intentionally do not fire fbq('track', 'Lead', ...) from the browser:
+    // running both sides with eventID-based dedup is the documented best
+    // practice, but in practice it leaves room for double-counting whenever
+    // dedup misfires (event_id mismatch, late arrival, etc). CAPI-only
+    // guarantees exactly one Lead event per signup, survives ad blockers,
+    // and ships strong match keys (hashed email + IP + UA + fbp/fbc).
+    // The browser Pixel still fires PageView automatically (initialized in
+    // layout.tsx), which keeps Custom Audiences / retargeting working.
 
-    // -- Meta CAPI (server) — fire-and-forget, deduped via eventID ----------
+    // -- Meta CAPI (server) — sole source of the Lead event ----------------
     if (!internal && typeof window !== "undefined") {
       const fbp = readCookie("_fbp");
       const fbc = readCookie("_fbc");

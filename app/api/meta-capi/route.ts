@@ -3,10 +3,15 @@ import crypto from "node:crypto";
 
 // Meta Conversions API server-side handler.
 //
-// Fires a deduplicated "Lead" event alongside the browser pixel so we don't
-// lose conversions to ad blockers / iOS 14+ tracking restrictions. Meta
-// deduplicates by event_name + event_id within a 7-day window — the browser
-// and server send the same event_id so only one counts.
+// This is the SOLE source of the "Lead" standard event going to Meta. The
+// browser Pixel still loads in layout.tsx and fires PageView (used for
+// retargeting and Custom Audiences), but the Lead conversion event is only
+// fired from here — server-side. Trade-off: marginally less browser-side
+// signal, but guaranteed single-count per signup with no dedup risk, and
+// resilient to ad blockers / iOS 14+ tracking restrictions.
+//
+// The event_id we still attach acts as a server-side idempotency token in
+// case Meta ingests this event more than once (e.g. on a retry).
 //
 // Required env: META_CAPI_TOKEN (server-only, never exposed to the browser).
 // If the token is unset the route is a no-op (returns ok:false silently)

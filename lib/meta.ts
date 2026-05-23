@@ -160,6 +160,7 @@ function leadsFromActions(actions?: ActionEntry[]): number {
   const leadShaped = actions.filter(
     (a) =>
       a.action_type === "lead" ||
+      a.action_type === "onsite_web_lead" ||
       a.action_type === "offsite_conversion.fb_pixel_lead" ||
       a.action_type === "onsite_conversion.lead_grouped" ||
       a.action_type.endsWith(".lead") ||
@@ -171,6 +172,7 @@ function leadsFromActions(actions?: ActionEntry[]): number {
 
   const priority = [
     "lead",
+    "onsite_web_lead",                    // Meta's newer name for website leads — this is what our account actually returns
     "offsite_conversion.fb_pixel_lead",
     "onsite_conversion.lead_grouped",
   ];
@@ -190,6 +192,7 @@ function cpaFromActions(costs?: ActionEntry[]): number | null {
   if (!costs || costs.length === 0) return null;
   const priority = [
     "lead",
+    "onsite_web_lead",                    // Meta's newer name for website leads — this is what our account actually returns
     "offsite_conversion.fb_pixel_lead",
     "onsite_conversion.lead_grouped",
   ];
