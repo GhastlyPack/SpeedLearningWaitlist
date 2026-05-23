@@ -98,6 +98,44 @@
   }
 }
 
+/* ---------- Range toggle (Meta sections) ---------- */
+.range-toggle {
+  display: inline-flex;
+  border: 1px solid var(--rule-hi);
+  background: var(--card);
+}
+
+.range-toggle-btn {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-mute);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+  font-weight: 500;
+}
+
+.range-toggle-btn + .range-toggle-btn {
+  border-left: 1px solid var(--rule);
+}
+
+.range-toggle-btn:hover {
+  color: var(--ink);
+}
+
+.range-toggle-btn.active {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.range-toggle-btn.active:hover {
+  color: var(--bg);
+}
+
 /* ---------- Section blocks ---------- */
 .dash-section {
   border: 1px solid var(--rule);

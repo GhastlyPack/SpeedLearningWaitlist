@@ -16,6 +16,9 @@ import {
   type MetaCampaign,
   type MetaAd,
 } from "@/lib/meta";
+import MetaSections from "./MetaSections";
+
+type MetaWindow = "1d" | "7d" | "30d";
 
 // Render fresh on each request. Internal dashboard sees ~dozens of loads
 // per day, so we don't bother with ISR or revalidate windows; both would
@@ -38,12 +41,11 @@ interface DashboardData {
   cioRecent: WaitlistPerson[];
   cioDailySignups: Record<string, number>;
   cioError?: string;
-  metaSpend7d: MetaInsight | null;
-  metaSpend30d: MetaInsight | null;
+  metaSpend: Record<MetaWindow, MetaInsight | null>;
   metaSpendError?: string;
-  metaCampaigns: MetaCampaign[];
+  metaCampaigns: Record<MetaWindow, MetaCampaign[]>;
   metaCampaignsError?: string;
-  metaAds: MetaAd[];
+  metaAds: Record<MetaWindow, MetaAd[]>;
   metaAdsError?: string;
 }
 
@@ -54,19 +56,29 @@ async function loadData(): Promise<DashboardData> {
     trendRes,
     sourcesRes,
     cioRes,
+    metaSpend1dRes,
     metaSpend7dRes,
     metaSpend30dRes,
-    metaCampaignsRes,
-    metaAdsRes,
+    metaCampaigns1dRes,
+    metaCampaigns7dRes,
+    metaCampaigns30dRes,
+    metaAds1dRes,
+    metaAds7dRes,
+    metaAds30dRes,
   ] = await Promise.allSettled([
     getHeroMetrics("30daysAgo", "today"),
     getRealtimeActiveUsers(),
     getDailyTrend(30),
     getTrafficSources("30daysAgo", "today", 10),
     getWaitlistSummary(20),
+    getAccountInsights(1),
     getAccountInsights(7),
     getAccountInsights(30),
+    getTopCampaigns(1, 5),
+    getTopCampaigns(7, 5),
     getTopCampaigns(30, 5),
+    getTopAds(1, 5),
+    getTopAds(7, 5),
     getTopAds(30, 5),
   ]);
 
@@ -90,25 +102,62 @@ async function loadData(): Promise<DashboardData> {
     cioDailySignups:
       cioRes.status === "fulfilled" ? cioRes.value.dailySignups : {},
     cioError: cioRes.status === "rejected" ? errMsg(cioRes) : undefined,
-    metaSpend7d:
-      metaSpend7dRes.status === "fulfilled" ? metaSpend7dRes.value : null,
-    metaSpend30d:
-      metaSpend30dRes.status === "fulfilled" ? metaSpend30dRes.value : null,
+    metaSpend: {
+      "1d": metaSpend1dRes.status === "fulfilled" ? metaSpend1dRes.value : null,
+      "7d": metaSpend7dRes.status === "fulfilled" ? metaSpend7dRes.value : null,
+      "30d": metaSpend30dRes.status === "fulfilled" ? metaSpend30dRes.value : null,
+    },
     metaSpendError:
-      metaSpend30dRes.status === "rejected"
-        ? errMsg(metaSpend30dRes)
-        : metaSpend7dRes.status === "rejected"
-        ? errMsg(metaSpend7dRes)
+      [metaSpend1dRes, metaSpend7dRes, metaSpend30dRes].find(
+        (r) => r.status === "rejected"
+      )
+        ? errMsg(
+            [metaSpend1dRes, metaSpend7dRes, metaSpend30dRes].find(
+              (r) => r.status === "rejected"
+            ) as PromiseRejectedResult
+          )
         : undefined,
-    metaCampaigns:
-      metaCampaignsRes.status === "fulfilled" ? metaCampaignsRes.value : [],
-    metaCampaignsError:
-      metaCampaignsRes.status === "rejected"
-        ? errMsg(metaCampaignsRes)
-        : undefined,
-    metaAds: metaAdsRes.status === "fulfilled" ? metaAdsRes.value : [],
-    metaAdsError:
-      metaAdsRes.status === "rejected" ? errMsg(metaAdsRes) : undefined,
+    metaCampaigns: {
+      "1d":
+        metaCampaigns1dRes.status === "fulfilled"
+          ? metaCampaigns1dRes.value
+          : [],
+      "7d":
+        metaCampaigns7dRes.status === "fulfilled"
+          ? metaCampaigns7dRes.value
+          : [],
+      "30d":
+        metaCampaigns30dRes.status === "fulfilled"
+          ? metaCampaigns30dRes.value
+          : [],
+    },
+    metaCampaignsError: [
+      metaCampaigns1dRes,
+      metaCampaigns7dRes,
+      metaCampaigns30dRes,
+    ].find((r) => r.status === "rejected")
+      ? errMsg(
+          [
+            metaCampaigns1dRes,
+            metaCampaigns7dRes,
+            metaCampaigns30dRes,
+          ].find((r) => r.status === "rejected") as PromiseRejectedResult
+        )
+      : undefined,
+    metaAds: {
+      "1d": metaAds1dRes.status === "fulfilled" ? metaAds1dRes.value : [],
+      "7d": metaAds7dRes.status === "fulfilled" ? metaAds7dRes.value : [],
+      "30d": metaAds30dRes.status === "fulfilled" ? metaAds30dRes.value : [],
+    },
+    metaAdsError: [metaAds1dRes, metaAds7dRes, metaAds30dRes].find(
+      (r) => r.status === "rejected"
+    )
+      ? errMsg(
+          [metaAds1dRes, metaAds7dRes, metaAds30dRes].find(
+            (r) => r.status === "rejected"
+          ) as PromiseRejectedResult
+        )
+      : undefined,
   };
 }
 
@@ -368,166 +417,15 @@ export default async function DashboardPage() {
           </section>
         </div>
 
-        {/* Meta ad spend hero */}
-        <section className="dash-section">
-          <div className="header">
-            <h2>Meta ad spend</h2>
-            <div className="meta">Marketing API</div>
-          </div>
-          {data.metaSpendError ? (
-            <div className="empty" style={{ padding: 24, textAlign: "center" }}>
-              {data.metaSpendError}
-            </div>
-          ) : (
-            <div className="dash-hero" style={{ border: 0, margin: 0 }}>
-              <div className="cell">
-                <div className="label">Spend · 7d</div>
-                <div className="value">{money(data.metaSpend7d?.spend ?? null)}</div>
-                <div className="sub">
-                  {fmt(data.metaSpend7d?.leads ?? null)} leads · CPL{" "}
-                  {money(data.metaSpend7d?.costPerLead ?? null)}
-                </div>
-              </div>
-              <div className="cell">
-                <div className="label">Spend · 30d</div>
-                <div className="value">{money(data.metaSpend30d?.spend ?? null)}</div>
-                <div className="sub">
-                  {fmt(data.metaSpend30d?.leads ?? null)} leads · CPL{" "}
-                  {money(data.metaSpend30d?.costPerLead ?? null)}
-                </div>
-              </div>
-              <div className="cell">
-                <div className="label">CTR · 30d</div>
-                <div className="value">{pct(data.metaSpend30d?.ctr ?? null)}</div>
-                <div className="sub">
-                  {fmt(data.metaSpend30d?.clicks ?? null)} clicks /{" "}
-                  {fmt(data.metaSpend30d?.impressions ?? null)} impr
-                </div>
-              </div>
-              <div className="cell">
-                <div className="label">CPM · 30d</div>
-                <div className="value">{money(data.metaSpend30d?.cpm ?? null)}</div>
-                <div className="sub">
-                  CPC {money(data.metaSpend30d?.cpc ?? null)}
-                </div>
-              </div>
-            </div>
-          )}
-        </section>
-
-        {/* Top campaigns */}
-        <section className="dash-section">
-          <div className="header">
-            <h2>Top campaigns · 30d</h2>
-            <div className="meta">by leads</div>
-          </div>
-          <table className="dash-table">
-            <thead>
-              <tr>
-                <th>Campaign</th>
-                <th style={{ textAlign: "right" }}>Spend</th>
-                <th style={{ textAlign: "right" }}>Leads</th>
-                <th style={{ textAlign: "right" }}>CPL</th>
-                <th style={{ textAlign: "right" }}>CTR</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.metaCampaigns.length === 0 ? (
-                <tr>
-                  <td className="empty" colSpan={5}>
-                    {data.metaCampaignsError
-                      ? data.metaCampaignsError
-                      : "No campaign data yet."}
-                  </td>
-                </tr>
-              ) : (
-                data.metaCampaigns.map((c) => (
-                  <tr key={c.id}>
-                    <td>
-                      <div>{truncate(c.name, 56)}</div>
-                    </td>
-                    <td className="source" style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                      {money(c.spend)}
-                    </td>
-                    <td className="source" style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                      {fmt(c.leads)}
-                    </td>
-                    <td className="source" style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                      {money(c.costPerLead)}
-                    </td>
-                    <td className="source" style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                      {pct(c.ctr)}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </section>
-
-        {/* Top ads / creatives */}
-        <section className="dash-section">
-          <div className="header">
-            <h2>Top ad creatives · 30d</h2>
-            <div className="meta">by leads</div>
-          </div>
-          <table className="dash-table">
-            <thead>
-              <tr>
-                <th>Ad</th>
-                <th style={{ textAlign: "right" }}>Spend</th>
-                <th style={{ textAlign: "right" }}>Impr</th>
-                <th style={{ textAlign: "right" }}>CTR</th>
-                <th style={{ textAlign: "right" }}>Leads</th>
-                <th style={{ textAlign: "right" }}>CPL</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.metaAds.length === 0 ? (
-                <tr>
-                  <td className="empty" colSpan={6}>
-                    {data.metaAdsError ? data.metaAdsError : "No ad data yet."}
-                  </td>
-                </tr>
-              ) : (
-                data.metaAds.map((a) => (
-                  <tr key={a.id}>
-                    <td>
-                      <div>{truncate(a.name, 50)}</div>
-                      <div
-                        style={{
-                          fontFamily: "var(--font-mono), monospace",
-                          fontSize: 10.5,
-                          letterSpacing: 0.6,
-                          color: "var(--ink-mute)",
-                          textTransform: "uppercase",
-                          marginTop: 2,
-                        }}
-                      >
-                        {statusLabel(a.status)}
-                      </div>
-                    </td>
-                    <td className="source" style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                      {money(a.spend)}
-                    </td>
-                    <td className="source" style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                      {fmt(a.impressions)}
-                    </td>
-                    <td className="source" style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                      {pct(a.ctr)}
-                    </td>
-                    <td className="source" style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                      {fmt(a.leads)}
-                    </td>
-                    <td className="source" style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                      {money(a.costPerLead)}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </section>
+        {/* Meta — three sections with a shared time-range toggle */}
+        <MetaSections
+          spend={data.metaSpend}
+          campaigns={data.metaCampaigns}
+          ads={data.metaAds}
+          spendError={data.metaSpendError}
+          campaignsError={data.metaCampaignsError}
+          adsError={data.metaAdsError}
+        />
 
         {/* Recent signups */}
         <section className="dash-section">
