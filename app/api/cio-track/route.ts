@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { isInternalEmail } from "@/lib/internal";
+import { classifyCioTraffic } from "@/lib/cio";
 
 /**
  * Customer.io Track API — server-side direct write to the Journeys workspace.
@@ -123,6 +124,15 @@ export async function POST(req: NextRequest) {
   // can filter them out of total/recent/daily counts. We still write them
   // to CIO so the team can test the confirmation email end-to-end.
   const internal = isInternalEmail(email);
+
+  // Classify paid vs organic and store as a CIO attribute so segments
+  // can target by traffic source and the dashboard doesn't have to
+  // recompute every load. Uses the same rules as lib/cio.ts.
+  const trafficType = classifyCioTraffic({
+    utmMedium: body.utm_medium,
+    fbclidPresent: !!body.fbclid,
+  });
+
   const traits: Record<string, unknown> = {
     email,
     waitlist: true,
@@ -131,6 +141,7 @@ export async function POST(req: NextRequest) {
     created_at: createdAt,
     referral_code: referralCode,
     internal,
+    traffic_type: trafficType,
   };
   if (firstName) traits.first_name = firstName;
   if (lastName) traits.last_name = lastName;

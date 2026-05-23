@@ -142,8 +142,16 @@ export default function TopSections({
   const cioCount = cioSignupsByRange[traffic][range];
   const currentSources = sources[range];
 
-  // Conversion-rate math. CIO is the canonical signup count; GA active
-  // users is the closest GA proxy for "unique humans on the lander."
+  // CANONICAL DENOMINATOR: visitors (GA activeUsers) for every conversion
+  // calculation across the dashboard. Sessions and page views are shown as
+  // context (in the Visitors cell subtitle) but never used as the base.
+  //
+  //   page views  — raw page loads; refreshes count
+  //   sessions    — groups of activity; 30min idle ends one
+  //   visitors    — unique humans (the conversion-math base)
+  //
+  // Falls back to sessions only if activeUsers is missing for some reason
+  // (shouldn't happen with the GA Data API but defensive for "all" range).
   const visitors =
     (ga?.activeUsers ?? 0) > 0
       ? ga!.activeUsers
@@ -189,11 +197,13 @@ export default function TopSections({
         </div>
         <div className="cell">
           <div className="label">
-            Sessions · {descriptiveRange(range)}
+            Visitors · {descriptiveRange(range)}
             {traffic !== "all" ? ` · ${trafficLabel(traffic).toLowerCase()}` : ""}
           </div>
-          <div className="value">{fmt(ga?.sessions ?? null)}</div>
-          <div className="sub">Page views: {fmt(ga?.pageViews ?? null)}</div>
+          <div className="value">{fmt(ga?.activeUsers ?? null)}</div>
+          <div className="sub">
+            {fmt(ga?.sessions ?? null)} sessions · {fmt(ga?.pageViews ?? null)} page views
+          </div>
         </div>
         <div className="cell">
           <div className="label">
@@ -261,29 +271,29 @@ export default function TopSections({
               Funnel · {descriptiveRange(range)}
               {traffic !== "all" ? ` · ${trafficLabel(traffic).toLowerCase()}` : ""}
             </h2>
-            <div className="meta">GA4 events</div>
+            <div className="meta">rates as % of visitors</div>
           </div>
           <div className="body">
             <FunnelRow
-              label="Page views"
-              value={ga?.pageViews ?? null}
-              base={ga?.pageViews ?? null}
+              label="Visitors"
+              value={visitors || null}
+              base={visitors || null}
             />
             <FunnelRow
               label="Form starts"
               value={ga?.formStarts ?? null}
-              base={ga?.pageViews ?? null}
+              base={visitors || null}
             />
             <FunnelRow
               label="Waitlist signups"
               value={cioCount ?? null}
-              base={ga?.pageViews ?? null}
+              base={visitors || null}
               accent
             />
             <FunnelRow
               label="Scroll events"
               value={ga?.scrolls ?? null}
-              base={ga?.pageViews ?? null}
+              base={visitors || null}
               subtle
             />
           </div>
