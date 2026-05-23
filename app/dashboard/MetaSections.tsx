@@ -105,14 +105,16 @@ export default function MetaSections({
             {spendError}
           </div>
         ) : (
-          <div className="dash-hero" style={{ border: 0, margin: 0 }}>
+          <div className="dash-hero cols-5" style={{ border: 0, margin: 0 }}>
             <div className="cell">
               <div className="label">Spend</div>
               <div className="value">{money(currentSpend?.spend ?? null)}</div>
-              <div className="sub">
-                {fmt(currentSpend?.leads ?? null)} leads · CPL{" "}
-                {money(currentSpend?.costPerLead ?? null)}
-              </div>
+              <div className="sub">{fmt(currentSpend?.leads ?? null)} leads</div>
+            </div>
+            <div className="cell">
+              <div className="label">CPL</div>
+              <div className="value">{money(currentSpend?.costPerLead ?? null)}</div>
+              <div className="sub">spend / leads</div>
             </div>
             <div className="cell">
               <div className="label">CTR</div>

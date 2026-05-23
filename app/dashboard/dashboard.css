@@ -98,6 +98,25 @@
   }
 }
 
+/* 5-column modifier for the Meta ad-spend hero, which has more metrics
+   than the top GA hero. Steps down to 3 then 2 then 1 column as the
+   viewport narrows so cells never get too cramped to read. */
+.dash-hero.cols-5 {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+@media (max-width: 1100px) {
+  .dash-hero.cols-5 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .dash-hero.cols-5 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 /* ---------- Top filters (range + traffic toggles) ---------- */
 .dash-top-toggle {
   display: flex;
