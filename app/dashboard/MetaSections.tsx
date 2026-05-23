@@ -1,23 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import type { MetaInsight, MetaCampaign, MetaAd } from "@/lib/meta";
-
-type WindowKey = "1d" | "7d" | "30d";
+import type { MetaInsight, MetaCampaign, MetaAd, RangePreset } from "@/lib/meta";
 
 interface Props {
-  spend: Record<WindowKey, MetaInsight | null>;
-  campaigns: Record<WindowKey, MetaCampaign[]>;
-  ads: Record<WindowKey, MetaAd[]>;
+  spend: Record<RangePreset, MetaInsight | null>;
+  campaigns: Record<RangePreset, MetaCampaign[]>;
+  ads: Record<RangePreset, MetaAd[]>;
   spendError?: string;
   campaignsError?: string;
   adsError?: string;
 }
 
-const WINDOWS: WindowKey[] = ["1d", "7d", "30d"];
+const WINDOWS: RangePreset[] = ["24h", "7d", "30d", "all"];
 
-function labelFor(w: WindowKey): string {
-  return w === "1d" ? "Today" : w === "7d" ? "7d" : "30d";
+function labelFor(w: RangePreset): string {
+  return w === "24h" ? "24h" : w === "7d" ? "7d" : w === "30d" ? "30d" : "All";
+}
+
+function descriptiveLabel(w: RangePreset): string {
+  return w === "24h"
+    ? "last 24h"
+    : w === "7d"
+    ? "last 7d"
+    : w === "30d"
+    ? "last 30d"
+    : "all time";
 }
 
 function fmt(n: number | null | undefined): string {
@@ -47,8 +55,8 @@ function RangeToggle({
   value,
   onChange,
 }: {
-  value: WindowKey;
-  onChange: (v: WindowKey) => void;
+  value: RangePreset;
+  onChange: (v: RangePreset) => void;
 }) {
   return (
     <div className="range-toggle">
@@ -74,7 +82,7 @@ export default function MetaSections({
   campaignsError,
   adsError,
 }: Props) {
-  const [range, setRange] = useState<WindowKey>("1d");
+  const [range, setRange] = useState<RangePreset>("24h");
   const currentSpend = spend[range];
   const currentCampaigns = campaigns[range];
   const currentAds = ads[range];
@@ -89,7 +97,7 @@ export default function MetaSections({
       {/* Meta ad spend hero */}
       <section className="dash-section">
         <div className="header">
-          <h2>Meta ad spend · {labelFor(range).toLowerCase()}</h2>
+          <h2>Meta ad spend · {descriptiveLabel(range)}</h2>
           <RangeToggle value={range} onChange={setRange} />
         </div>
         {spendError ? (
@@ -133,7 +141,7 @@ export default function MetaSections({
       {/* Top campaigns */}
       <section className="dash-section">
         <div className="header">
-          <h2>Top campaigns · {labelFor(range).toLowerCase()}</h2>
+          <h2>Top campaigns · {descriptiveLabel(range)}</h2>
           <div className="meta">by leads</div>
         </div>
         <table className="dash-table">
@@ -152,7 +160,7 @@ export default function MetaSections({
                 <td className="empty" colSpan={5}>
                   {campaignsError
                     ? campaignsError
-                    : `No campaign data for ${labelFor(range).toLowerCase()}.`}
+                    : `No campaign data for ${descriptiveLabel(range)}.`}
                 </td>
               </tr>
             ) : (
@@ -181,7 +189,7 @@ export default function MetaSections({
       {/* Top ads */}
       <section className="dash-section">
         <div className="header">
-          <h2>Top ad creatives · {labelFor(range).toLowerCase()}</h2>
+          <h2>Top ad creatives · {descriptiveLabel(range)}</h2>
           <div className="meta">by leads</div>
         </div>
         <table className="dash-table">
@@ -201,7 +209,7 @@ export default function MetaSections({
                 <td className="empty" colSpan={6}>
                   {adsError
                     ? adsError
-                    : `No ad data for ${labelFor(range).toLowerCase()}.`}
+                    : `No ad data for ${descriptiveLabel(range)}.`}
                 </td>
               </tr>
             ) : (

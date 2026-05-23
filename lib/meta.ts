@@ -204,11 +204,18 @@ function rowToInsight(row?: InsightRow): MetaInsight {
 // Queries
 
 /**
- * Build an explicit time_range JSON parameter that ALWAYS includes today.
- * Meta's `date_preset=last_7d`/`last_30d` semantics shift depending on the
- * account; on some accounts today is excluded, which silently zeros out
- * fresh-campaign data. Explicit dates avoid that ambiguity.
+ * Range presets the dashboard uses. Mapped to either an explicit
+ * time_range (since/until ISO dates) or date_preset=maximum.
+ *
+ *   "24h" — yesterday + today (rolling-ish 24 hours). Meta's API has a
+ *           several-hour delay on TODAY's data; expanding to yesterday
+ *           guarantees the panel is always populated.
+ *   "7d"  — last 7 calendar days, today inclusive.
+ *   "30d" — last 30 calendar days, today inclusive.
+ *   "all" — lifetime via date_preset=maximum.
  */
+export type RangePreset = "24h" | "7d" | "30d" | "all";
+
 function timeRangeParam(days: number): string {
   const today = new Date();
   const until = today.toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
@@ -218,9 +225,22 @@ function timeRangeParam(days: number): string {
   return JSON.stringify({ since, until });
 }
 
-/** Account-level insights for the last N days, today inclusive. */
+function paramsForRange(preset: RangePreset): Record<string, string> {
+  switch (preset) {
+    case "24h":
+      return { time_range: timeRangeParam(2) };
+    case "7d":
+      return { time_range: timeRangeParam(7) };
+    case "30d":
+      return { time_range: timeRangeParam(30) };
+    case "all":
+      return { date_preset: "maximum" };
+  }
+}
+
+/** Account-level insights for a range preset. */
 export async function getAccountInsights(
-  days: number = 30
+  preset: RangePreset = "30d"
 ): Promise<MetaInsight> {
   interface Resp {
     data: InsightRow[];
@@ -228,14 +248,14 @@ export async function getAccountInsights(
   const resp = await metaFetch<Resp>(`/${getAccountId()}/insights`, {
     fields:
       "spend,impressions,clicks,ctr,cpc,cpm,actions,cost_per_action_type",
-    time_range: timeRangeParam(days),
+    ...paramsForRange(preset),
     level: "account",
   });
   return rowToInsight(resp.data?.[0]);
 }
 
 /**
- * Top campaigns over the last N days, sorted by leads desc then spend desc.
+ * Top campaigns over a range preset, sorted by leads desc then spend desc.
  *
  * Uses /insights with level=campaign — single call, returns each campaign
  * with its insights merged into the same row. Doesn't include campaign
@@ -243,7 +263,7 @@ export async function getAccountInsights(
  * table UI rather than make a separate /campaigns call for it.
  */
 export async function getTopCampaigns(
-  days: number = 30,
+  preset: RangePreset = "30d",
   limit: number = 5
 ): Promise<MetaCampaign[]> {
   interface CampaignInsightRow extends InsightRow {
@@ -256,7 +276,7 @@ export async function getTopCampaigns(
   const resp = await metaFetch<Resp>(`/${getAccountId()}/insights`, {
     fields:
       "campaign_id,campaign_name,spend,impressions,clicks,ctr,actions,cost_per_action_type",
-    time_range: timeRangeParam(days),
+    ...paramsForRange(preset),
     level: "campaign",
     limit: "100",
   });
@@ -282,9 +302,9 @@ export async function getTopCampaigns(
     .slice(0, limit);
 }
 
-/** Top ads (creatives) over the last N days. */
+/** Top ads (creatives) over a range preset. */
 export async function getTopAds(
-  days: number = 30,
+  preset: RangePreset = "30d",
   limit: number = 5
 ): Promise<MetaAd[]> {
   interface AdInsightRow extends InsightRow {
@@ -297,7 +317,7 @@ export async function getTopAds(
   const resp = await metaFetch<Resp>(`/${getAccountId()}/insights`, {
     fields:
       "ad_id,ad_name,spend,impressions,clicks,ctr,actions,cost_per_action_type",
-    time_range: timeRangeParam(days),
+    ...paramsForRange(preset),
     level: "ad",
     limit: "100",
   });

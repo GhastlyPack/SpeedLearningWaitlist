@@ -15,10 +15,9 @@ import {
   type MetaInsight,
   type MetaCampaign,
   type MetaAd,
+  type RangePreset,
 } from "@/lib/meta";
 import MetaSections from "./MetaSections";
-
-type MetaWindow = "1d" | "7d" | "30d";
 
 // Render fresh on each request. Internal dashboard sees ~dozens of loads
 // per day, so we don't bother with ISR or revalidate windows; both would
@@ -41,11 +40,11 @@ interface DashboardData {
   cioRecent: WaitlistPerson[];
   cioDailySignups: Record<string, number>;
   cioError?: string;
-  metaSpend: Record<MetaWindow, MetaInsight | null>;
+  metaSpend: Record<RangePreset, MetaInsight | null>;
   metaSpendError?: string;
-  metaCampaigns: Record<MetaWindow, MetaCampaign[]>;
+  metaCampaigns: Record<RangePreset, MetaCampaign[]>;
   metaCampaignsError?: string;
-  metaAds: Record<MetaWindow, MetaAd[]>;
+  metaAds: Record<RangePreset, MetaAd[]>;
   metaAdsError?: string;
 }
 
@@ -56,30 +55,36 @@ async function loadData(): Promise<DashboardData> {
     trendRes,
     sourcesRes,
     cioRes,
-    metaSpend1dRes,
+    metaSpend24hRes,
     metaSpend7dRes,
     metaSpend30dRes,
-    metaCampaigns1dRes,
+    metaSpendAllRes,
+    metaCampaigns24hRes,
     metaCampaigns7dRes,
     metaCampaigns30dRes,
-    metaAds1dRes,
+    metaCampaignsAllRes,
+    metaAds24hRes,
     metaAds7dRes,
     metaAds30dRes,
+    metaAdsAllRes,
   ] = await Promise.allSettled([
     getHeroMetrics("30daysAgo", "today"),
     getRealtimeActiveUsers(),
     getDailyTrend(30),
     getTrafficSources("30daysAgo", "today", 10),
     getWaitlistSummary(20),
-    getAccountInsights(1),
-    getAccountInsights(7),
-    getAccountInsights(30),
-    getTopCampaigns(1, 5),
-    getTopCampaigns(7, 5),
-    getTopCampaigns(30, 5),
-    getTopAds(1, 5),
-    getTopAds(7, 5),
-    getTopAds(30, 5),
+    getAccountInsights("24h"),
+    getAccountInsights("7d"),
+    getAccountInsights("30d"),
+    getAccountInsights("all"),
+    getTopCampaigns("24h", 5),
+    getTopCampaigns("7d", 5),
+    getTopCampaigns("30d", 5),
+    getTopCampaigns("all", 5),
+    getTopAds("24h", 5),
+    getTopAds("7d", 5),
+    getTopAds("30d", 5),
+    getTopAds("all", 5),
   ]);
 
   const errMsg = (r: PromiseRejectedResult) =>
@@ -103,57 +108,53 @@ async function loadData(): Promise<DashboardData> {
       cioRes.status === "fulfilled" ? cioRes.value.dailySignups : {},
     cioError: cioRes.status === "rejected" ? errMsg(cioRes) : undefined,
     metaSpend: {
-      "1d": metaSpend1dRes.status === "fulfilled" ? metaSpend1dRes.value : null,
+      "24h": metaSpend24hRes.status === "fulfilled" ? metaSpend24hRes.value : null,
       "7d": metaSpend7dRes.status === "fulfilled" ? metaSpend7dRes.value : null,
       "30d": metaSpend30dRes.status === "fulfilled" ? metaSpend30dRes.value : null,
+      "all": metaSpendAllRes.status === "fulfilled" ? metaSpendAllRes.value : null,
     },
     metaSpendError:
-      [metaSpend1dRes, metaSpend7dRes, metaSpend30dRes].find(
+      [metaSpend24hRes, metaSpend7dRes, metaSpend30dRes, metaSpendAllRes].find(
         (r) => r.status === "rejected"
       )
         ? errMsg(
-            [metaSpend1dRes, metaSpend7dRes, metaSpend30dRes].find(
+            [metaSpend24hRes, metaSpend7dRes, metaSpend30dRes, metaSpendAllRes].find(
               (r) => r.status === "rejected"
             ) as PromiseRejectedResult
           )
         : undefined,
     metaCampaigns: {
-      "1d":
-        metaCampaigns1dRes.status === "fulfilled"
-          ? metaCampaigns1dRes.value
-          : [],
-      "7d":
-        metaCampaigns7dRes.status === "fulfilled"
-          ? metaCampaigns7dRes.value
-          : [],
-      "30d":
-        metaCampaigns30dRes.status === "fulfilled"
-          ? metaCampaigns30dRes.value
-          : [],
+      "24h": metaCampaigns24hRes.status === "fulfilled" ? metaCampaigns24hRes.value : [],
+      "7d": metaCampaigns7dRes.status === "fulfilled" ? metaCampaigns7dRes.value : [],
+      "30d": metaCampaigns30dRes.status === "fulfilled" ? metaCampaigns30dRes.value : [],
+      "all": metaCampaignsAllRes.status === "fulfilled" ? metaCampaignsAllRes.value : [],
     },
     metaCampaignsError: [
-      metaCampaigns1dRes,
+      metaCampaigns24hRes,
       metaCampaigns7dRes,
       metaCampaigns30dRes,
+      metaCampaignsAllRes,
     ].find((r) => r.status === "rejected")
       ? errMsg(
           [
-            metaCampaigns1dRes,
+            metaCampaigns24hRes,
             metaCampaigns7dRes,
             metaCampaigns30dRes,
+            metaCampaignsAllRes,
           ].find((r) => r.status === "rejected") as PromiseRejectedResult
         )
       : undefined,
     metaAds: {
-      "1d": metaAds1dRes.status === "fulfilled" ? metaAds1dRes.value : [],
+      "24h": metaAds24hRes.status === "fulfilled" ? metaAds24hRes.value : [],
       "7d": metaAds7dRes.status === "fulfilled" ? metaAds7dRes.value : [],
       "30d": metaAds30dRes.status === "fulfilled" ? metaAds30dRes.value : [],
+      "all": metaAdsAllRes.status === "fulfilled" ? metaAdsAllRes.value : [],
     },
-    metaAdsError: [metaAds1dRes, metaAds7dRes, metaAds30dRes].find(
+    metaAdsError: [metaAds24hRes, metaAds7dRes, metaAds30dRes, metaAdsAllRes].find(
       (r) => r.status === "rejected"
     )
       ? errMsg(
-          [metaAds1dRes, metaAds7dRes, metaAds30dRes].find(
+          [metaAds24hRes, metaAds7dRes, metaAds30dRes, metaAdsAllRes].find(
             (r) => r.status === "rejected"
           ) as PromiseRejectedResult
         )
