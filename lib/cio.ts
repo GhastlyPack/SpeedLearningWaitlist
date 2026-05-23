@@ -204,6 +204,7 @@ const NAME_TRAFFIC_OVERRIDES: ReadonlyArray<{
   { firstName: "Edgar", lastName: "Engibarian", trafficType: "paid", reason: "Pre-tracking Meta ad signup" },
   { firstName: "NP", lastName: "Duwal", trafficType: "paid", reason: "Pre-tracking Meta ad signup" },
   { firstName: "Phillip", lastName: "Coker", trafficType: "paid", reason: "Pre-tracking Meta ad signup" },
+  { firstName: "Christopher", lastName: "Vazquez", trafficType: "paid", reason: "Pre-tracking Meta ad signup" },
 ];
 
 function nameTrafficOverride(
