@@ -89,7 +89,7 @@ export default function Home() {
               <div className="compare-cell">Scattered tabs and notes</div>
               <div className="compare-cell">A single chat thread</div>
               <div className="compare-cell compare-cell-sl">
-                Report, slides, mind map, flashcards, video, AI chat
+                Report, slides, mind map, flashcards, audio/video summary, AI chat
               </div>
             </div>
           </aside>
