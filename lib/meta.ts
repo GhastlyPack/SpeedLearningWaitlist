@@ -136,44 +136,71 @@ interface ActionEntry {
   value: string | number;
 }
 
-/** Sum leads across all action_types whose name contains "lead". Meta
- *  reports leads under several keys depending on event source: "lead",
- *  "offsite_conversion.fb_pixel_lead", "onsite_conversion.lead_grouped". */
+/**
+ * Pick the single best lead count from Meta's `actions` array.
+ *
+ * Meta returns the SAME underlying Lead conversion categorized under
+ * multiple action_type names. For our pixel + CAPI setup these usually
+ * include both "lead" (the aggregate) and "offsite_conversion.fb_pixel_lead"
+ * (the categorized form) — they're the same conversions, not separate
+ * counts. Summing across them double-counts (2× per signup).
+ *
+ * Strategy: walk a priority list and return the first match. Never sum.
+ *
+ *   "lead"                              — deduplicated aggregate
+ *   "offsite_conversion.fb_pixel_lead"  — pixel/CAPI Lead (post-dedup)
+ *   "onsite_conversion.lead_grouped"    — native lead forms (we don't use these)
+ *
+ * We log everything lead-shaped to Vercel logs so the next discrepancy
+ * is easy to diagnose from the raw API response.
+ */
 function leadsFromActions(actions?: ActionEntry[]): number {
-  if (!actions) return 0;
-  // To avoid double-counting, prefer "lead" if present; otherwise sum
-  // the most specific pixel/onsite lead actions.
-  const totalLead = actions.find((a) => a.action_type === "lead");
-  if (totalLead) return n(totalLead.value);
+  if (!actions || actions.length === 0) return 0;
 
-  let total = 0;
-  for (const a of actions) {
-    if (
-      a.action_type.endsWith(".lead") ||
-      a.action_type.endsWith("_lead") ||
+  const leadShaped = actions.filter(
+    (a) =>
+      a.action_type === "lead" ||
       a.action_type === "offsite_conversion.fb_pixel_lead" ||
-      a.action_type === "onsite_conversion.lead_grouped"
-    ) {
-      total += n(a.value);
-    }
-  }
-  return total;
-}
-
-function cpaFromActions(costs?: ActionEntry[]): number | null {
-  if (!costs) return null;
-  for (const a of costs) {
-    if (a.action_type === "lead") return n(a.value);
-  }
-  for (const a of costs) {
-    if (
+      a.action_type === "onsite_conversion.lead_grouped" ||
       a.action_type.endsWith(".lead") ||
       a.action_type.endsWith("_lead")
-    ) {
-      return n(a.value);
-    }
+  );
+  if (leadShaped.length > 0) {
+    console.log("[meta] lead actions", JSON.stringify(leadShaped));
   }
-  return null;
+
+  const priority = [
+    "lead",
+    "offsite_conversion.fb_pixel_lead",
+    "onsite_conversion.lead_grouped",
+  ];
+  for (const type of priority) {
+    const match = actions.find((a) => a.action_type === type);
+    if (match) return n(match.value);
+  }
+  // Last-resort fallback: any other ".lead"-suffix type, but only one.
+  const fallback = actions.find(
+    (a) => a.action_type.endsWith(".lead") || a.action_type.endsWith("_lead")
+  );
+  return fallback ? n(fallback.value) : 0;
+}
+
+/** Same priority rule for cost-per-lead — never sum/average across types. */
+function cpaFromActions(costs?: ActionEntry[]): number | null {
+  if (!costs || costs.length === 0) return null;
+  const priority = [
+    "lead",
+    "offsite_conversion.fb_pixel_lead",
+    "onsite_conversion.lead_grouped",
+  ];
+  for (const type of priority) {
+    const match = costs.find((c) => c.action_type === type);
+    if (match) return n(match.value);
+  }
+  const fallback = costs.find(
+    (c) => c.action_type.endsWith(".lead") || c.action_type.endsWith("_lead")
+  );
+  return fallback ? n(fallback.value) : null;
 }
 
 interface InsightRow {
