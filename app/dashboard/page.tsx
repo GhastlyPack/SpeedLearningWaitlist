@@ -312,7 +312,7 @@ export default async function DashboardPage() {
               <tr>
                 <th>Name</th>
                 <th>Email</th>
-                <th>Source</th>
+                <th>Source / Campaign</th>
                 <th>When</th>
               </tr>
             </thead>
@@ -331,7 +331,9 @@ export default async function DashboardPage() {
                       {p.lastName ? ` ${p.lastName}` : ""}
                     </td>
                     <td className="email">{maskEmail(p.email)}</td>
-                    <td className="source">{p.source || "—"}</td>
+                    <td className="source">
+                      <SourceCell person={p} />
+                    </td>
                     <td className="when">{timeAgo(p.signedUpAt)}</td>
                   </tr>
                 ))
@@ -346,6 +348,31 @@ export default async function DashboardPage() {
         <div>Cache TTL 60s · GA4 + Customer.io</div>
       </footer>
     </div>
+  );
+}
+
+function SourceCell({ person }: { person: WaitlistPerson }) {
+  // Priority for "main" source display:
+  // utm_source (paid/social/referral) > referred_by (organic referral) > "direct"
+  const primary = person.utmSource || (person.referredBy ? "referral" : null) || "direct";
+  // Secondary line: campaign details or referrer code
+  const secondary =
+    person.utmCampaign ||
+    (person.utmMedium && person.utmMedium !== person.utmSource
+      ? person.utmMedium
+      : null) ||
+    (person.referredBy ? `ref ${person.referredBy.slice(0, 8)}` : null);
+
+  return (
+    <span>
+      <span style={{ color: "var(--ink)" }}>{primary}</span>
+      {secondary ? (
+        <>
+          <span style={{ color: "var(--ink-mute)" }}> · </span>
+          <span style={{ color: "var(--ink-mute)" }}>{secondary}</span>
+        </>
+      ) : null}
+    </span>
   );
 }
 

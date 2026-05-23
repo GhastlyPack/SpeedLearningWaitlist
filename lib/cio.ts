@@ -65,6 +65,13 @@ export interface WaitlistPerson {
   lastName?: string;
   source?: string;
   signedUpAt?: string; // ISO
+  // Acquisition attributes captured at signup (may be undefined for
+  // direct/QR-code/pre-UTM signups).
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmContent?: string;
+  referredBy?: string;
 }
 
 export interface WaitlistSummary {
@@ -181,6 +188,11 @@ export async function getCustomerByCioId(
       lastName: attrString(attrs, "last_name"),
       source: attrString(attrs, "waitlist_source"),
       signedUpAt,
+      utmSource: attrString(attrs, "utm_source"),
+      utmMedium: attrString(attrs, "utm_medium"),
+      utmCampaign: attrString(attrs, "utm_campaign"),
+      utmContent: attrString(attrs, "utm_content"),
+      referredBy: attrString(attrs, "referred_by"),
     };
   } catch {
     return null;
