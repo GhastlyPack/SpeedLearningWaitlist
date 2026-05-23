@@ -21,6 +21,7 @@ import {
 } from "@/lib/meta";
 import MetaSections from "./MetaSections";
 import TopSections from "./TopSections";
+import SignupPoller from "./SignupPoller";
 
 // Render fresh on each request. Internal dashboard sees ~dozens of loads
 // per day, so we don't bother with ISR or revalidate windows; both would
@@ -315,9 +316,13 @@ export default async function DashboardPage() {
           <div className="crumb">Internal · Dashboard</div>
         </div>
         <div className="right">
-          Updated {now} · Auto-refresh 60s
+          Updated {now} · Watching for new signups
         </div>
       </header>
+
+      {/* Invisible: polls /api/latest-signup every 30s and refreshes
+          the page when a new signup lands. Renders no DOM. */}
+      <SignupPoller />
 
       <main className="dash-main">
         {/* Hero + traffic sources + funnel + recent signups, all driven by
