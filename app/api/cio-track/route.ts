@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "node:crypto";
 
 /**
  * Customer.io Track API — server-side direct write to the Journeys workspace.
@@ -12,6 +13,14 @@ import { NextRequest, NextResponse } from "next/server";
  *   - Track API writes straight into the Journeys workspace with no CDP
  *     middleware involved. Same-origin POST from the browser also can't be
  *     intercepted by browser extensions.
+ *
+ * Also handles UTM attribution: the lander captures utm_*, fbclid, gclid,
+ * ref, referrer, landing_page on first visit into a cookie (see lib/utms.ts),
+ * and forwards them here on signup. They land as attributes on the CIO
+ * person so the dashboard can break signups down by campaign / ad / referrer.
+ *
+ * Returns a referral_code derived from the email so the client can build
+ * personalized share URLs that credit the referrer when their invitee joins.
  *
  * Required env:
  *   CIO_TRACK_SITE_ID  — Site ID from Workspace Settings -> API credentials.
@@ -35,12 +44,37 @@ function basicAuthHeader(): string {
   return `Basic ${Buffer.from(`${SITE_ID}:${API_KEY}`).toString("base64")}`;
 }
 
+/**
+ * Derive a referral code from the email. SHA-256(email) truncated to 12 hex
+ * chars. Stable per email so the same person always shares the same code,
+ * which lets us match `?ref=<code>` on signups against the existing
+ * referral_code attribute to credit the referrer.
+ */
+function referralCodeFor(email: string): string {
+  return crypto
+    .createHash("sha256")
+    .update(email.trim().toLowerCase())
+    .digest("hex")
+    .slice(0, 12);
+}
+
 interface CioTrackBody {
   email?: string;
   first_name?: string;
   last_name?: string;
   source?: string;
-  signed_up_at?: string; // ISO timestamp
+  signed_up_at?: string;
+  // UTM / acquisition attributes (any may be undefined)
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_term?: string;
+  fbclid?: string;
+  gclid?: string;
+  ref?: string;
+  referrer?: string;
+  landing_page?: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -77,6 +111,7 @@ export async function POST(req: NextRequest) {
   const nowIso = body.signed_up_at || new Date().toISOString();
   const createdAt = Math.floor(new Date(nowIso).getTime() / 1000);
   const source = body.source || "speedlearning.com";
+  const referralCode = referralCodeFor(email);
 
   const auth = basicAuthHeader();
   const base = getApiBase();
@@ -89,9 +124,34 @@ export async function POST(req: NextRequest) {
     waitlist_signed_up_at: nowIso,
     waitlist_source: source,
     created_at: createdAt,
+    referral_code: referralCode,
   };
   if (firstName) traits.first_name = firstName;
   if (lastName) traits.last_name = lastName;
+
+  // UTM / acquisition attributes (only set when present so we don't
+  // overwrite a returning person's prior attribution with empty values).
+  const acquisitionKeys: Array<keyof CioTrackBody> = [
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_content",
+    "utm_term",
+    "fbclid",
+    "gclid",
+    "referrer",
+    "landing_page",
+  ];
+  for (const k of acquisitionKeys) {
+    const v = body[k];
+    if (typeof v === "string" && v.length > 0) {
+      traits[k] = v;
+    }
+  }
+  // Inbound referral code (this person was referred by someone with this code)
+  if (typeof body.ref === "string" && body.ref.length > 0) {
+    traits.referred_by = body.ref;
+  }
 
   try {
     const identifyResp = await fetch(`${base}/customers/${customerId}`, {
@@ -110,7 +170,6 @@ export async function POST(req: NextRequest) {
         identifyResp.status,
         errText.slice(0, 300)
       );
-      // Log enough to recover later (email is the most important).
       console.error("[cio-track] failed_email=", email);
       return NextResponse.json(
         {
@@ -134,6 +193,11 @@ export async function POST(req: NextRequest) {
         data: {
           source,
           signed_up_at: nowIso,
+          utm_source: body.utm_source,
+          utm_medium: body.utm_medium,
+          utm_campaign: body.utm_campaign,
+          utm_content: body.utm_content,
+          ref: body.ref,
         },
       }),
     });
@@ -145,27 +209,28 @@ export async function POST(req: NextRequest) {
         trackResp.status,
         errText.slice(0, 300)
       );
-      // Identify still succeeded — person is in CIO. Track event failure is
-      // a soft error; report ok:true with a warning so we don't double-create.
     }
 
-    // Lightweight server log so signups are recoverable from Vercel logs
-    // even if every external service fails simultaneously. Email + first
-    // name only; we don't log other PII.
+    // Recovery breadcrumb in Vercel logs.
     console.log(
       "[cio-track] ok",
-      JSON.stringify({ email, first_name: firstName, source })
+      JSON.stringify({
+        email,
+        first_name: firstName,
+        utm_source: body.utm_source,
+        utm_campaign: body.utm_campaign,
+      })
     );
 
     return NextResponse.json({
       ok: true,
       identify_status: identifyResp.status,
       track_status: trackResp.status,
+      referral_code: referralCode,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[cio-track] exception", message);
-    // Surface enough to recover: log the email so we can rebuild from logs.
     console.error("[cio-track] failed_email=", email);
     return NextResponse.json(
       { ok: false, reason: "exception", message },

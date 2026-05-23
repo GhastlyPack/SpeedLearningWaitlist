@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { getStoredUtms } from "@/lib/utms";
+import ShareButtons from "./ShareButtons";
 
 type Status = "idle" | "submitting" | "success" | "error";
 
@@ -17,7 +19,9 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function readCookie(name: string): string | undefined {
   if (typeof document === "undefined") return undefined;
   const match = document.cookie.match(
-    new RegExp("(^|; )" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "=([^;]*)")
+    new RegExp(
+      "(^|; )" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "=([^;]*)"
+    )
   );
   return match ? decodeURIComponent(match[2]) : undefined;
 }
@@ -38,6 +42,8 @@ export default function WaitlistForm() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState<string>("");
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [submittedFirstName, setSubmittedFirstName] = useState<string>("");
 
   const clearError = () => {
     if (status === "error") {
@@ -68,29 +74,7 @@ export default function WaitlistForm() {
 
     const nowIso = new Date().toISOString();
     const eventId = newEventId();
-
-    // -- Customer.io (server-side Track API at /api/cio-track) --------------
-    // Browser snippet was removed 2026-05-21: it got blocked by ad blockers
-    // and the CDP -> Journeys destination silently dropped events. Server-side
-    // Track API writes directly to Journeys with no middlewares involved.
-    if (typeof window !== "undefined") {
-      void fetch("/api/cio-track", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: cleanEmail,
-          first_name: cleanFirst,
-          last_name: cleanLast || undefined,
-          source: "speedlearning.com",
-          signed_up_at: nowIso,
-        }),
-        keepalive: true,
-      }).catch(() => {
-        // Server-side route. Same-origin, no extension can touch it. If it
-        // does fail, the request lands in Vercel logs anyway as a recovery
-        // breadcrumb (we console.log the email server-side).
-      });
-    }
+    const utms = getStoredUtms();
 
     // -- Google Analytics 4 (gtag.js) — fires the "waitlist_signup" key event
     try {
@@ -153,13 +137,54 @@ export default function WaitlistForm() {
         }),
         keepalive: true,
       }).catch(() => {
-        // Browser pixel already covered the event; server fallback failure
-        // is acceptable. We don't surface this to the user.
+        /* same-origin route — failures land in Vercel logs */
       });
     }
 
+    // -- Customer.io (server-side Track API at /api/cio-track) --------------
+    // Browser snippet was removed 2026-05-21 after data loss incident. All
+    // CIO writes go through this server route now. Includes UTM attribution
+    // from the cookie captured on first visit.
+    if (typeof window !== "undefined") {
+      void fetch("/api/cio-track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: cleanEmail,
+          first_name: cleanFirst,
+          last_name: cleanLast || undefined,
+          source: "speedlearning.com",
+          signed_up_at: nowIso,
+          // First-touch acquisition attributes, if present:
+          utm_source: utms.utm_source,
+          utm_medium: utms.utm_medium,
+          utm_campaign: utms.utm_campaign,
+          utm_content: utms.utm_content,
+          utm_term: utms.utm_term,
+          fbclid: utms.fbclid,
+          gclid: utms.gclid,
+          ref: utms.ref,
+          referrer: utms.referrer,
+          landing_page: utms.landing_page,
+        }),
+        keepalive: true,
+      })
+        .then((res) => res.ok ? res.json() : null)
+        .then((data) => {
+          if (data && typeof data === "object" && "referral_code" in data) {
+            setReferralCode((data as { referral_code?: string }).referral_code ?? null);
+          }
+        })
+        .catch(() => {
+          /* server route, same-origin */
+        });
+    }
+
     setStatus("success");
-    setMessage(`You're on the list, ${cleanFirst}. We'll be in touch.`);
+    setSubmittedFirstName(cleanFirst);
+    setMessage(
+      `You're on the list, ${cleanFirst}. Watch your inbox for next steps.`
+    );
     setFirstName("");
     setLastName("");
     setEmail("");
@@ -239,6 +264,13 @@ export default function WaitlistForm() {
         {message ||
           "Early access, updates, and the occasional offer. Unsubscribe anytime."}
       </div>
+
+      {status === "success" && (
+        <ShareButtons
+          referralCode={referralCode}
+          prompt={`${submittedFirstName ? submittedFirstName + ", " : ""}share with friends and earn credits when they join.`}
+        />
+      )}
     </div>
   );
 }

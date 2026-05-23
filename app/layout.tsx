@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { IBM_Plex_Sans, JetBrains_Mono, Newsreader } from "next/font/google";
 import Script from "next/script";
 import { headers } from "next/headers";
+import UtmCapture from "./UtmCapture";
 import "./globals.css";
 
 const plex = IBM_Plex_Sans({
@@ -81,6 +82,7 @@ export default async function RootLayout({
     >
       <body>
         {children}
+        {!isDashSubdomain && <UtmCapture />}
         {!isDashSubdomain && (
           <>
         <Script
