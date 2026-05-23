@@ -179,6 +179,46 @@ export function classifyCioTraffic(args: {
   return "organic";
 }
 
+/**
+ * Manual traffic-type overrides for records the automatic classifier gets
+ * wrong. Typically: signups from a paid ad that landed without UTMs or
+ * fbclid (e.g. before tracking was wired up, or after a user pasted the
+ * naked domain into their address bar after seeing the ad).
+ *
+ * These take precedence over both the stored CIO `traffic_type` attribute
+ * and the computed-from-attribution fallback. Matched by case-insensitive
+ * (first_name + last_name) pair — we use names rather than emails because
+ * the dashboard masks emails for privacy and looking them up in CIO each
+ * time is a hassle.
+ */
+const NAME_TRAFFIC_OVERRIDES: ReadonlyArray<{
+  firstName: string;
+  lastName: string;
+  trafficType: "paid" | "organic";
+  reason: string;
+}> = [
+  // Three Meta-ad signups from before UTM/fbclid capture was fully wired.
+  // Show up as "direct" source in the dashboard, but they came via ads —
+  // explains the 6-event Meta-side discrepancy (3 signups doubled during
+  // the pre-dedup era).
+  { firstName: "Edgar", lastName: "Engibarian", trafficType: "paid", reason: "Pre-tracking Meta ad signup" },
+  { firstName: "NP", lastName: "Duwal", trafficType: "paid", reason: "Pre-tracking Meta ad signup" },
+  { firstName: "Phillip", lastName: "Coker", trafficType: "paid", reason: "Pre-tracking Meta ad signup" },
+];
+
+function nameTrafficOverride(
+  firstName?: string,
+  lastName?: string
+): "paid" | "organic" | undefined {
+  if (!firstName || !lastName) return undefined;
+  const f = firstName.trim().toLowerCase();
+  const l = lastName.trim().toLowerCase();
+  const match = NAME_TRAFFIC_OVERRIDES.find(
+    (o) => o.firstName.toLowerCase() === f && o.lastName.toLowerCase() === l
+  );
+  return match?.trafficType;
+}
+
 // -----------------------------------------------------------------------------
 // Queries
 
@@ -241,9 +281,24 @@ export async function getCustomerByCioId(
     const internalRaw = attrString(attrs, "internal");
     const internal = internalRaw === "true";
 
+    const firstName = attrString(attrs, "first_name");
+    const lastName = attrString(attrs, "last_name");
     const utmMedium = attrString(attrs, "utm_medium");
     const fbclidPresent = !!attrString(attrs, "fbclid");
-    const trafficType = classifyCioTraffic({ utmMedium, fbclidPresent });
+    const storedTraffic = attrString(attrs, "traffic_type");
+
+    // Resolution order:
+    //   1. Manual name-based override (NAME_TRAFFIC_OVERRIDES above)
+    //   2. Stored CIO attribute (set by /api/cio-track and the backfill)
+    //   3. Computed from utm_medium + fbclid (the original on-the-fly classifier)
+    // The override wins so we can correct historical mis-classifications
+    // without needing to round-trip a write to CIO. The stored attribute
+    // wins next so manual edits in CIO's admin UI propagate to the dashboard.
+    const trafficType: "paid" | "organic" =
+      nameTrafficOverride(firstName, lastName) ||
+      (storedTraffic === "paid" || storedTraffic === "organic"
+        ? storedTraffic
+        : classifyCioTraffic({ utmMedium, fbclidPresent }));
 
     return {
       cioId,
@@ -251,8 +306,8 @@ export async function getCustomerByCioId(
         resp.customer.identifiers?.email ||
         attrString(attrs, "email") ||
         "(unknown)",
-      firstName: attrString(attrs, "first_name"),
-      lastName: attrString(attrs, "last_name"),
+      firstName,
+      lastName,
       source: attrString(attrs, "waitlist_source"),
       signedUpAt,
       utmSource: attrString(attrs, "utm_source"),
