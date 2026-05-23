@@ -73,7 +73,7 @@ export default function Home() {
                 Hidden &mdash; sometimes fabricated
               </div>
               <div className="compare-cell compare-cell-sl">
-                50&ndash;100 curated, vetted sources
+                50+ curated, evaluated sources
               </div>
 
               <div className="compare-row-label">Accuracy</div>
@@ -82,7 +82,7 @@ export default function Home() {
                 Hallucinates facts and citations
               </div>
               <div className="compare-cell compare-cell-sl">
-                Every claim cites a real source
+                Every claim substantiated by a real source
               </div>
 
               <div className="compare-row-label">Output</div>
