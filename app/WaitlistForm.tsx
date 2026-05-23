@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { getStoredUtms } from "@/lib/utms";
+import { isInternalEmail } from "@/lib/internal";
 import ShareButtons from "./ShareButtons";
 
 type Status = "idle" | "submitting" | "success" | "error";
@@ -76,51 +77,61 @@ export default function WaitlistForm() {
     const eventId = newEventId();
     const utms = getStoredUtms();
 
+    // Internal team emails (@bowskyventures.com etc.) bypass ad-platform &
+    // analytics events entirely so test signups don't inflate Meta lead
+    // counts or GA conversions. They still flow through /api/cio-track so
+    // the team can test the confirmation email end-to-end.
+    const internal = isInternalEmail(cleanEmail);
+
     // -- Google Analytics 4 (gtag.js) — fires the "waitlist_signup" key event
-    try {
-      if (typeof window !== "undefined" && typeof window.gtag === "function") {
-        window.gtag("event", "waitlist_signup", {
-          value: 0,
-          currency: "USD",
-          method: "email_form",
-        });
-      } else if (process.env.NODE_ENV !== "production") {
-        console.warn(
-          "[waitlist] gtag not loaded — GA4 snippet hasn't initialized yet."
-        );
-      }
-    } catch (err) {
-      if (process.env.NODE_ENV !== "production") {
-        console.warn("[waitlist] gtag call threw", err);
+    if (!internal) {
+      try {
+        if (typeof window !== "undefined" && typeof window.gtag === "function") {
+          window.gtag("event", "waitlist_signup", {
+            value: 0,
+            currency: "USD",
+            method: "email_form",
+          });
+        } else if (process.env.NODE_ENV !== "production") {
+          console.warn(
+            "[waitlist] gtag not loaded — GA4 snippet hasn't initialized yet."
+          );
+        }
+      } catch (err) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("[waitlist] gtag call threw", err);
+        }
       }
     }
 
     // -- Meta Pixel (browser) — fires the "Lead" standard event -------------
-    try {
-      if (typeof window !== "undefined" && window.fbq) {
-        window.fbq(
-          "track",
-          "Lead",
-          {
-            content_name: "SpeedLearning Waitlist",
-            value: 0,
-            currency: "USD",
-          },
-          { eventID: eventId }
-        );
-      } else if (process.env.NODE_ENV !== "production") {
-        console.warn(
-          "[waitlist] fbq not loaded — Meta Pixel snippet hasn't initialized yet."
-        );
-      }
-    } catch (err) {
-      if (process.env.NODE_ENV !== "production") {
-        console.warn("[waitlist] fbq call threw", err);
+    if (!internal) {
+      try {
+        if (typeof window !== "undefined" && window.fbq) {
+          window.fbq(
+            "track",
+            "Lead",
+            {
+              content_name: "SpeedLearning Waitlist",
+              value: 0,
+              currency: "USD",
+            },
+            { eventID: eventId }
+          );
+        } else if (process.env.NODE_ENV !== "production") {
+          console.warn(
+            "[waitlist] fbq not loaded — Meta Pixel snippet hasn't initialized yet."
+          );
+        }
+      } catch (err) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("[waitlist] fbq call threw", err);
+        }
       }
     }
 
     // -- Meta CAPI (server) — fire-and-forget, deduped via eventID ----------
-    if (typeof window !== "undefined") {
+    if (!internal && typeof window !== "undefined") {
       const fbp = readCookie("_fbp");
       const fbc = readCookie("_fbc");
       void fetch("/api/meta-capi", {

@@ -72,6 +72,10 @@ export interface WaitlistPerson {
   utmCampaign?: string;
   utmContent?: string;
   referredBy?: string;
+  /** True if the email belongs to an internal team domain (e.g.
+   *  @bowskyventures.com). Filtered out of dashboard counts; left in CIO
+   *  so we can verify the confirmation email flow without polluting metrics. */
+  internal?: boolean;
 }
 
 export interface WaitlistSummary {
@@ -178,6 +182,10 @@ export async function getCustomerByCioId(
       fromTimestampSeconds(ts.waitlist_signed_up_at) ||
       fromTimestampSeconds(ts.first_name); // any signal of identify time
 
+    // CIO stores booleans as the literal strings "true"/"false".
+    const internalRaw = attrString(attrs, "internal");
+    const internal = internalRaw === "true";
+
     return {
       cioId,
       email:
@@ -193,6 +201,7 @@ export async function getCustomerByCioId(
       utmCampaign: attrString(attrs, "utm_campaign"),
       utmContent: attrString(attrs, "utm_content"),
       referredBy: attrString(attrs, "referred_by"),
+      internal,
     };
   } catch {
     return null;
@@ -221,8 +230,6 @@ export async function getWaitlistSummary(
     cursor = resp.next;
   }
 
-  const total = allCioIds.length;
-
   // Hydrate. For now, hydrate everyone; sort by signedUpAt desc; slice.
   // Limit concurrency to avoid hammering CIO's API on big waitlists.
   const concurrency = 10;
@@ -235,8 +242,15 @@ export async function getWaitlistSummary(
     hydrated.push(...results);
   }
 
-  const people = hydrated.filter((p): p is WaitlistPerson => p !== null);
+  // Exclude internal team signups (e.g. @bowskyventures.com) from every
+  // count the dashboard surfaces — total, recent list, daily chart. They
+  // still exist in CIO so the team can test the email flow, just not on
+  // the metrics dashboard.
+  const all = hydrated.filter((p): p is WaitlistPerson => p !== null);
+  const people = all.filter((p) => !p.internal);
   people.sort((a, b) => (b.signedUpAt || "").localeCompare(a.signedUpAt || ""));
+
+  const total = people.length;
 
   // Group by UTC date for the daily chart.
   const dailySignups: Record<string, number> = {};

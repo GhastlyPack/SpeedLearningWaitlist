@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
+import { isInternalEmail } from "@/lib/internal";
 
 /**
  * Customer.io Track API — server-side direct write to the Journeys workspace.
@@ -118,6 +119,10 @@ export async function POST(req: NextRequest) {
   const customerId = encodeURIComponent(email);
 
   // 1) Identify the customer (create or update with traits).
+  // Internal emails (@bowskyventures.com etc.) get tagged so the dashboard
+  // can filter them out of total/recent/daily counts. We still write them
+  // to CIO so the team can test the confirmation email end-to-end.
+  const internal = isInternalEmail(email);
   const traits: Record<string, unknown> = {
     email,
     waitlist: true,
@@ -125,6 +130,7 @@ export async function POST(req: NextRequest) {
     waitlist_source: source,
     created_at: createdAt,
     referral_code: referralCode,
+    internal,
   };
   if (firstName) traits.first_name = firstName;
   if (lastName) traits.last_name = lastName;
