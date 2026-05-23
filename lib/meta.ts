@@ -203,9 +203,24 @@ function rowToInsight(row?: InsightRow): MetaInsight {
 // -----------------------------------------------------------------------------
 // Queries
 
-/** Account-level insights for a date preset. */
+/**
+ * Build an explicit time_range JSON parameter that ALWAYS includes today.
+ * Meta's `date_preset=last_7d`/`last_30d` semantics shift depending on the
+ * account; on some accounts today is excluded, which silently zeros out
+ * fresh-campaign data. Explicit dates avoid that ambiguity.
+ */
+function timeRangeParam(days: number): string {
+  const today = new Date();
+  const until = today.toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+  const sinceDate = new Date(today);
+  sinceDate.setUTCDate(today.getUTCDate() - (days - 1));
+  const since = sinceDate.toISOString().slice(0, 10);
+  return JSON.stringify({ since, until });
+}
+
+/** Account-level insights for the last N days, today inclusive. */
 export async function getAccountInsights(
-  datePreset: string = "last_30d"
+  days: number = 30
 ): Promise<MetaInsight> {
   interface Resp {
     data: InsightRow[];
@@ -213,36 +228,45 @@ export async function getAccountInsights(
   const resp = await metaFetch<Resp>(`/${getAccountId()}/insights`, {
     fields:
       "spend,impressions,clicks,ctr,cpc,cpm,actions,cost_per_action_type",
-    date_preset: datePreset,
+    time_range: timeRangeParam(days),
     level: "account",
   });
   return rowToInsight(resp.data?.[0]);
 }
 
-/** Top campaigns over a date preset, sorted by leads desc then spend desc. */
+/**
+ * Top campaigns over the last N days, sorted by leads desc then spend desc.
+ *
+ * Uses /insights with level=campaign — single call, returns each campaign
+ * with its insights merged into the same row. Doesn't include campaign
+ * status (insights endpoint doesn't expose it); we omit status from the
+ * table UI rather than make a separate /campaigns call for it.
+ */
 export async function getTopCampaigns(
-  datePreset: string = "last_30d",
+  days: number = 30,
   limit: number = 5
 ): Promise<MetaCampaign[]> {
-  interface Resp {
-    data: Array<{
-      id: string;
-      name: string;
-      status: string;
-      insights?: { data?: InsightRow[] };
-    }>;
+  interface CampaignInsightRow extends InsightRow {
+    campaign_id?: string;
+    campaign_name?: string;
   }
-  const resp = await metaFetch<Resp>(`/${getAccountId()}/campaigns`, {
-    fields: `id,name,status,insights.date_preset(${datePreset}){spend,impressions,clicks,ctr,actions,cost_per_action_type}`,
+  interface Resp {
+    data: CampaignInsightRow[];
+  }
+  const resp = await metaFetch<Resp>(`/${getAccountId()}/insights`, {
+    fields:
+      "campaign_id,campaign_name,spend,impressions,clicks,ctr,actions,cost_per_action_type",
+    time_range: timeRangeParam(days),
+    level: "campaign",
     limit: "100",
   });
 
-  const campaigns: MetaCampaign[] = (resp.data || []).map((c) => {
-    const ins = rowToInsight(c.insights?.data?.[0]);
+  const campaigns: MetaCampaign[] = (resp.data || []).map((row) => {
+    const ins = rowToInsight(row);
     return {
-      id: c.id,
-      name: c.name,
-      status: c.status,
+      id: row.campaign_id || "",
+      name: row.campaign_name || "(unnamed)",
+      status: "",
       spend: ins.spend,
       impressions: ins.impressions,
       clicks: ins.clicks,
@@ -253,37 +277,37 @@ export async function getTopCampaigns(
   });
 
   campaigns.sort((a, b) => b.leads - a.leads || b.spend - a.spend);
-  // Drop campaigns with zero spend AND zero impressions — not active enough
-  // to be meaningful in a "top" view.
   return campaigns
     .filter((c) => c.spend > 0 || c.impressions > 0)
     .slice(0, limit);
 }
 
-/** Top ads (creatives) over a date preset, sorted by leads desc then spend desc. */
+/** Top ads (creatives) over the last N days. */
 export async function getTopAds(
-  datePreset: string = "last_30d",
+  days: number = 30,
   limit: number = 5
 ): Promise<MetaAd[]> {
-  interface Resp {
-    data: Array<{
-      id: string;
-      name: string;
-      status: string;
-      insights?: { data?: InsightRow[] };
-    }>;
+  interface AdInsightRow extends InsightRow {
+    ad_id?: string;
+    ad_name?: string;
   }
-  const resp = await metaFetch<Resp>(`/${getAccountId()}/ads`, {
-    fields: `id,name,status,insights.date_preset(${datePreset}){spend,impressions,clicks,ctr,actions,cost_per_action_type}`,
+  interface Resp {
+    data: AdInsightRow[];
+  }
+  const resp = await metaFetch<Resp>(`/${getAccountId()}/insights`, {
+    fields:
+      "ad_id,ad_name,spend,impressions,clicks,ctr,actions,cost_per_action_type",
+    time_range: timeRangeParam(days),
+    level: "ad",
     limit: "100",
   });
 
-  const ads: MetaAd[] = (resp.data || []).map((a) => {
-    const ins = rowToInsight(a.insights?.data?.[0]);
+  const ads: MetaAd[] = (resp.data || []).map((row) => {
+    const ins = rowToInsight(row);
     return {
-      id: a.id,
-      name: a.name,
-      status: a.status,
+      id: row.ad_id || "",
+      name: row.ad_name || "(unnamed)",
+      status: "",
       spend: ins.spend,
       impressions: ins.impressions,
       clicks: ins.clicks,

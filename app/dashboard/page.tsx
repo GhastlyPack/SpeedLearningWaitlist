@@ -64,10 +64,10 @@ async function loadData(): Promise<DashboardData> {
     getDailyTrend(30),
     getTrafficSources("30daysAgo", "today", 10),
     getWaitlistSummary(20),
-    getAccountInsights("last_7d"),
-    getAccountInsights("last_30d"),
-    getTopCampaigns("last_30d", 5),
-    getTopAds("last_30d", 5),
+    getAccountInsights(7),
+    getAccountInsights(30),
+    getTopCampaigns(30, 5),
+    getTopAds(30, 5),
   ]);
 
   const errMsg = (r: PromiseRejectedResult) =>
@@ -445,18 +445,6 @@ export default async function DashboardPage() {
                   <tr key={c.id}>
                     <td>
                       <div>{truncate(c.name, 56)}</div>
-                      <div
-                        style={{
-                          fontFamily: "var(--font-mono), monospace",
-                          fontSize: 10.5,
-                          letterSpacing: 0.6,
-                          color: "var(--ink-mute)",
-                          textTransform: "uppercase",
-                          marginTop: 2,
-                        }}
-                      >
-                        {statusLabel(c.status)}
-                      </div>
                     </td>
                     <td className="source" style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
                       {money(c.spend)}
