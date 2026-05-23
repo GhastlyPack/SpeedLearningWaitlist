@@ -479,27 +479,34 @@ export default async function DashboardPage() {
 }
 
 function SourceCell({ person }: { person: WaitlistPerson }) {
-  // Priority for "main" source display:
-  // utm_source (paid/social/referral) > referred_by (organic referral) > "direct"
-  const primary = person.utmSource || (person.referredBy ? "referral" : null) || "direct";
-  // Secondary line: campaign details or referrer code
-  const secondary =
-    person.utmCampaign ||
-    (person.utmMedium && person.utmMedium !== person.utmSource
-      ? person.utmMedium
-      : null) ||
-    (person.referredBy ? `ref ${person.referredBy.slice(0, 8)}` : null);
+  // Top line: source channel. utm_source (paid/social) > "referral" > "direct".
+  const primary =
+    person.utmSource || (person.referredBy ? "referral" : null) || "direct";
+
+  // Stacked detail lines beneath the source. Meta's URL-parameter convention
+  // maps utm_campaign->campaign, utm_term->adset, utm_content->ad name. We
+  // label each line so non-Meta sources (Google, referrals) still read clearly.
+  const detail: Array<{ label: string; value: string }> = [];
+  if (person.utmCampaign) detail.push({ label: "camp", value: person.utmCampaign });
+  if (person.utmTerm) detail.push({ label: "adset", value: person.utmTerm });
+  if (person.utmContent) detail.push({ label: "ad", value: person.utmContent });
+  if (detail.length === 0 && person.referredBy) {
+    detail.push({ label: "ref", value: person.referredBy.slice(0, 8) });
+  }
 
   return (
-    <span>
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <span style={{ color: "var(--ink)" }}>{primary}</span>
-      {secondary ? (
-        <>
-          <span style={{ color: "var(--ink-mute)" }}> · </span>
-          <span style={{ color: "var(--ink-mute)" }}>{secondary}</span>
-        </>
-      ) : null}
-    </span>
+      {detail.map((d) => (
+        <span
+          key={d.label}
+          style={{ color: "var(--ink-mute)", fontSize: 11, letterSpacing: 0.3 }}
+        >
+          <span style={{ opacity: 0.65, marginRight: 6 }}>{d.label}</span>
+          {truncate(d.value, 44)}
+        </span>
+      ))}
+    </div>
   );
 }
 

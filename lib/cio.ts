@@ -67,9 +67,14 @@ export interface WaitlistPerson {
   signedUpAt?: string; // ISO
   // Acquisition attributes captured at signup (may be undefined for
   // direct/QR-code/pre-UTM signups).
+  // Convention for Meta-driven traffic (set via URL-parameter templates):
+  //   utmCampaign -> campaign name
+  //   utmTerm     -> adset name
+  //   utmContent  -> ad (creative) name
   utmSource?: string;
   utmMedium?: string;
   utmCampaign?: string;
+  utmTerm?: string;
   utmContent?: string;
   referredBy?: string;
   /** True if the email belongs to an internal team domain (e.g.
@@ -199,6 +204,7 @@ export async function getCustomerByCioId(
       utmSource: attrString(attrs, "utm_source"),
       utmMedium: attrString(attrs, "utm_medium"),
       utmCampaign: attrString(attrs, "utm_campaign"),
+      utmTerm: attrString(attrs, "utm_term"),
       utmContent: attrString(attrs, "utm_content"),
       referredBy: attrString(attrs, "referred_by"),
       internal,
