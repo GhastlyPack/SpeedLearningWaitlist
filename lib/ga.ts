@@ -164,35 +164,68 @@ function emptyHero(): HeroMetrics {
 }
 
 /**
- * Hero metrics, bucketed by traffic type (paid / organic / all).
+ * Tiny helper: resolve a dimension's row position via its header name.
+ * Used everywhere we parse multi-dimension GA responses — safer than
+ * positional indexing because GA can reorder dimensions in the response
+ * (and the implicit "dateRange" dimension is always tacked on at the end).
+ */
+function dimIdx(
+  resp:
+    | { dimensionHeaders?: Array<{ name?: string | null }> | null }
+    | null
+    | undefined,
+  name: string
+): number {
+  const headers = resp?.dimensionHeaders ?? [];
+  for (let i = 0; i < headers.length; i++) {
+    if (headers[i]?.name === name) return i;
+  }
+  return -1;
+}
+
+/**
+ * Hero metrics for one OR MORE range presets, bucketed by traffic type
+ * (paid / organic / all).
  *
- * Queries GA with sessionDefaultChannelGroup as a breakdown dimension and
- * sums each row into the right bucket. The "all" bucket is the sum of paid
- * + organic, which matches GA's overall total within rounding.
+ * Bundles all requested ranges into a single GA call using the dateRanges
+ * parameter — one query returns rows tagged with which range they belong
+ * to via the implicit "dateRange" dimension. Each preset must have a `name`
+ * that GA echoes back on the rows.
  *
- * activeUsers is a unique-people metric that does NOT sum across channel-
- * group rows (a person who arrived paid and returned organic counts once
- * in each row but only once in "all"). We accept a slight overcount in the
- * paid+organic sum for now — the per-bucket numbers are what matter for the
- * Conversion math, and a real "all" comes from the unsegmented query when
- * we need it. For this dashboard, summing buckets is close enough.
+ * Why bundle: the dashboard fetches all 4 ranges at once. Before bundling,
+ * that was 16 concurrent GA queries (4 ranges × 4 internal sub-queries) and
+ * blew past GA's 10-per-property concurrent quota. Now it's 4 queries
+ * total regardless of how many presets are requested.
+ *
+ * Returns: Record<preset, Record<trafficType, HeroMetrics>>.
  */
 export async function getHeroMetrics(
-  preset: GaRangePreset = "30d"
-): Promise<Record<GaTrafficType, HeroMetrics>> {
+  presets: GaRangePreset[] | GaRangePreset = ["30d"]
+): Promise<Record<GaRangePreset, Record<GaTrafficType, HeroMetrics>>> {
+  const presetList: GaRangePreset[] = Array.isArray(presets) ? presets : [presets];
   const { client, property } = getClient();
-  const { startDate, endDate } = gaRangeBounds(preset);
+  const dateRanges = presetList.map((p) => {
+    const { startDate, endDate } = gaRangeBounds(p);
+    return { name: p, startDate, endDate };
+  });
 
-  // Three parallel queries:
-  //  1. Top-line metrics split by channel group (paid vs organic buckets)
-  //  2. Event counts (scroll/form_start/waitlist_signup) split the same way
-  //  3. Top-line metrics UNsegmented — feeds the "all" bucket without the
-  //     channel-group double-counting that activeUsers suffers from on the
-  //     segmented response.
+  // Pre-seed the result so every requested preset has buckets — even if a
+  // particular range has zero data and GA returns no rows for it.
+  const result = {} as Record<GaRangePreset, Record<GaTrafficType, HeroMetrics>>;
+  for (const p of presetList) {
+    result[p] = { paid: emptyHero(), organic: emptyHero(), all: emptyHero() };
+  }
+
+  // Four parallel queries, each across all requested ranges:
+  //  1. Segmented metrics (channel-group dim) — feeds paid/organic
+  //  2. Segmented events (eventName + channel-group) — feeds paid/organic
+  //  3. Unsegmented metrics — feeds the "all" bucket without activeUsers
+  //     double-counting that segmented-by-channel queries suffer from
+  //  4. Unsegmented events — feeds the "all" bucket's event counts
   const [metricsResp, eventsResp, allMetricsResp, allEventsResp] = await Promise.all([
     client.runReport({
       property,
-      dateRanges: [{ startDate, endDate }],
+      dateRanges,
       dimensions: [{ name: "sessionDefaultChannelGroup" }],
       metrics: [
         { name: "screenPageViews" },
@@ -202,7 +235,7 @@ export async function getHeroMetrics(
     }),
     client.runReport({
       property,
-      dateRanges: [{ startDate, endDate }],
+      dateRanges,
       dimensions: [
         { name: "eventName" },
         { name: "sessionDefaultChannelGroup" },
@@ -219,7 +252,7 @@ export async function getHeroMetrics(
     }),
     client.runReport({
       property,
-      dateRanges: [{ startDate, endDate }],
+      dateRanges,
       metrics: [
         { name: "screenPageViews" },
         { name: "sessions" },
@@ -228,7 +261,7 @@ export async function getHeroMetrics(
     }),
     client.runReport({
       property,
-      dateRanges: [{ startDate, endDate }],
+      dateRanges,
       dimensions: [{ name: "eventName" }],
       metrics: [{ name: "eventCount" }],
       dimensionFilter: {
@@ -242,45 +275,77 @@ export async function getHeroMetrics(
     }),
   ]);
 
-  const paid = emptyHero();
-  const organic = emptyHero();
-
-  for (const row of metricsResp[0]?.rows ?? []) {
-    const group = row.dimensionValues?.[0]?.value || "";
-    const bucket = classifyGaChannelGroup(group) === "paid" ? paid : organic;
-    bucket.pageViews += n(row.metricValues?.[0]?.value);
-    bucket.sessions += n(row.metricValues?.[1]?.value);
-    bucket.activeUsers += n(row.metricValues?.[2]?.value);
+  // Q1: segmented metrics → paid/organic buckets per range
+  {
+    const r = metricsResp[0];
+    const drI = dimIdx(r, "dateRange");
+    const cgI = dimIdx(r, "sessionDefaultChannelGroup");
+    for (const row of r?.rows ?? []) {
+      const preset = row.dimensionValues?.[drI]?.value as GaRangePreset;
+      if (!preset || !result[preset]) continue;
+      const group = row.dimensionValues?.[cgI]?.value || "";
+      const bucket =
+        classifyGaChannelGroup(group) === "paid"
+          ? result[preset].paid
+          : result[preset].organic;
+      bucket.pageViews += n(row.metricValues?.[0]?.value);
+      bucket.sessions += n(row.metricValues?.[1]?.value);
+      bucket.activeUsers += n(row.metricValues?.[2]?.value);
+    }
   }
 
-  for (const row of eventsResp[0]?.rows ?? []) {
-    const name = row.dimensionValues?.[0]?.value || "";
-    const group = row.dimensionValues?.[1]?.value || "";
-    const bucket = classifyGaChannelGroup(group) === "paid" ? paid : organic;
-    const count = n(row.metricValues?.[0]?.value);
-    if (name === "scroll") bucket.scrolls += count;
-    else if (name === "form_start") bucket.formStarts += count;
-    else if (name === "waitlist_signup") bucket.waitlistSignups += count;
+  // Q2: segmented events → paid/organic event counts per range
+  {
+    const r = eventsResp[0];
+    const drI = dimIdx(r, "dateRange");
+    const cgI = dimIdx(r, "sessionDefaultChannelGroup");
+    const enI = dimIdx(r, "eventName");
+    for (const row of r?.rows ?? []) {
+      const preset = row.dimensionValues?.[drI]?.value as GaRangePreset;
+      if (!preset || !result[preset]) continue;
+      const group = row.dimensionValues?.[cgI]?.value || "";
+      const name = row.dimensionValues?.[enI]?.value || "";
+      const bucket =
+        classifyGaChannelGroup(group) === "paid"
+          ? result[preset].paid
+          : result[preset].organic;
+      const count = n(row.metricValues?.[0]?.value);
+      if (name === "scroll") bucket.scrolls += count;
+      else if (name === "form_start") bucket.formStarts += count;
+      else if (name === "waitlist_signup") bucket.waitlistSignups += count;
+    }
   }
 
-  const allRow = allMetricsResp[0]?.rows?.[0];
-  const all: HeroMetrics = {
-    pageViews: n(allRow?.metricValues?.[0]?.value),
-    sessions: n(allRow?.metricValues?.[1]?.value),
-    activeUsers: n(allRow?.metricValues?.[2]?.value),
-    scrolls: 0,
-    formStarts: 0,
-    waitlistSignups: 0,
-  };
-  for (const row of allEventsResp[0]?.rows ?? []) {
-    const name = row.dimensionValues?.[0]?.value || "";
-    const count = n(row.metricValues?.[0]?.value);
-    if (name === "scroll") all.scrolls = count;
-    else if (name === "form_start") all.formStarts = count;
-    else if (name === "waitlist_signup") all.waitlistSignups = count;
+  // Q3: unsegmented metrics → the "all" bucket (one row per range)
+  {
+    const r = allMetricsResp[0];
+    const drI = dimIdx(r, "dateRange");
+    for (const row of r?.rows ?? []) {
+      const preset = row.dimensionValues?.[drI]?.value as GaRangePreset;
+      if (!preset || !result[preset]) continue;
+      result[preset].all.pageViews = n(row.metricValues?.[0]?.value);
+      result[preset].all.sessions = n(row.metricValues?.[1]?.value);
+      result[preset].all.activeUsers = n(row.metricValues?.[2]?.value);
+    }
   }
 
-  return { paid, organic, all };
+  // Q4: unsegmented events → the "all" bucket event counts
+  {
+    const r = allEventsResp[0];
+    const drI = dimIdx(r, "dateRange");
+    const enI = dimIdx(r, "eventName");
+    for (const row of r?.rows ?? []) {
+      const preset = row.dimensionValues?.[drI]?.value as GaRangePreset;
+      if (!preset || !result[preset]) continue;
+      const name = row.dimensionValues?.[enI]?.value || "";
+      const count = n(row.metricValues?.[0]?.value);
+      if (name === "scroll") result[preset].all.scrolls = count;
+      else if (name === "form_start") result[preset].all.formStarts = count;
+      else if (name === "waitlist_signup") result[preset].all.waitlistSignups = count;
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -346,32 +411,65 @@ export async function getDailyTrend(days: number = 30): Promise<DailyTrendPoint[
 }
 
 /**
- * Traffic source/medium breakdown.
+ * Traffic source/medium breakdown, top N per range across one or more
+ * range presets. Bundled into a single GA call via dateRanges so loading
+ * all four windows stays within GA's concurrent-request quota.
+ *
+ * The bundled query is over-fetched (limit × presets × ~2) because GA
+ * sorts the response globally, not per-range — without over-fetching,
+ * the smallest range can come back empty if the larger ranges saturate
+ * the limit. After bucketing we sort and slice each range to `limit`.
  */
 export async function getTrafficSources(
-  preset: GaRangePreset = "30d",
+  presets: GaRangePreset[] | GaRangePreset = ["30d"],
   limit: number = 10
-): Promise<TrafficSource[]> {
+): Promise<Record<GaRangePreset, TrafficSource[]>> {
+  const presetList: GaRangePreset[] = Array.isArray(presets) ? presets : [presets];
   const { client, property } = getClient();
-  const { startDate, endDate } = gaRangeBounds(preset);
+  const dateRanges = presetList.map((p) => {
+    const { startDate, endDate } = gaRangeBounds(p);
+    return { name: p, startDate, endDate };
+  });
+
+  const overFetch = Math.max(50, limit * presetList.length * 4);
 
   const [resp] = await client.runReport({
     property,
-    dateRanges: [{ startDate, endDate }],
+    dateRanges,
     dimensions: [
       { name: "sessionSource" },
       { name: "sessionMedium" },
     ],
     metrics: [{ name: "sessions" }],
     orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
-    limit,
+    limit: overFetch,
   });
 
-  return (resp.rows ?? []).map((r) => ({
-    source: r.dimensionValues?.[0]?.value || "(unknown)",
-    medium: r.dimensionValues?.[1]?.value || "(none)",
-    sessions: n(r.metricValues?.[0]?.value),
-  }));
+  const buckets = {} as Record<GaRangePreset, TrafficSource[]>;
+  for (const p of presetList) buckets[p] = [];
+
+  const drI = dimIdx(resp, "dateRange");
+  const srcI = dimIdx(resp, "sessionSource");
+  const medI = dimIdx(resp, "sessionMedium");
+
+  for (const row of resp.rows ?? []) {
+    const preset = row.dimensionValues?.[drI]?.value as GaRangePreset;
+    if (!preset || !buckets[preset]) continue;
+    buckets[preset].push({
+      source: row.dimensionValues?.[srcI]?.value || "(unknown)",
+      medium: row.dimensionValues?.[medI]?.value || "(none)",
+      sessions: n(row.metricValues?.[0]?.value),
+    });
+  }
+
+  // Each bucket is already sessions-desc within the global response order
+  // (it was sorted before bucketing), but re-sort and slice defensively.
+  for (const p of presetList) {
+    buckets[p].sort((a, b) => b.sessions - a.sessions);
+    buckets[p] = buckets[p].slice(0, limit);
+  }
+
+  return buckets;
 }
 
 /**

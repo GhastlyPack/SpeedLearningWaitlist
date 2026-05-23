@@ -81,17 +81,13 @@ function sumDailyOverRange(
 }
 
 async function loadData(): Promise<DashboardData> {
+  const ALL_RANGES: GaRangePreset[] = ["24h", "7d", "30d", "all"];
+
   const [
-    heroGa24hRes,
-    heroGa7dRes,
-    heroGa30dRes,
-    heroGaAllRes,
+    heroGaRes,
     realtimeRes,
     trendRes,
-    sources24hRes,
-    sources7dRes,
-    sources30dRes,
-    sourcesAllRes,
+    sourcesRes,
     cioRes,
     metaSpend24hRes,
     metaSpend7dRes,
@@ -106,16 +102,14 @@ async function loadData(): Promise<DashboardData> {
     metaAds30dRes,
     metaAdsAllRes,
   ] = await Promise.allSettled([
-    getHeroMetrics("24h"),
-    getHeroMetrics("7d"),
-    getHeroMetrics("30d"),
-    getHeroMetrics("all"),
+    // Both GA "fan-out" functions take an array of presets and bundle
+    // every range into a single multi-dateRanges call. Without bundling
+    // the dashboard fires 16+ concurrent GA queries and trips the
+    // 10-per-property RESOURCE_EXHAUSTED quota.
+    getHeroMetrics(ALL_RANGES),
     getRealtimeActiveUsers(),
     getDailyTrend(30),
-    getTrafficSources("24h", 10),
-    getTrafficSources("7d", 10),
-    getTrafficSources("30d", 10),
-    getTrafficSources("all", 10),
+    getTrafficSources(ALL_RANGES, 10),
     getWaitlistSummary(20),
     getAccountInsights("24h"),
     getAccountInsights("7d"),
@@ -134,19 +128,11 @@ async function loadData(): Promise<DashboardData> {
   const errMsg = (r: PromiseRejectedResult) =>
     r.reason instanceof Error ? r.reason.message : String(r.reason);
 
-  const heroGaRejected = [
-    heroGa24hRes,
-    heroGa7dRes,
-    heroGa30dRes,
-    heroGaAllRes,
-  ].find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
+  const heroGaRejected =
+    heroGaRes.status === "rejected" ? heroGaRes : undefined;
 
-  const sourcesRejected = [
-    sources24hRes,
-    sources7dRes,
-    sources30dRes,
-    sourcesAllRes,
-  ].find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
+  const sourcesRejected =
+    sourcesRes.status === "rejected" ? sourcesRes : undefined;
 
   const cioDailySignups =
     cioRes.status === "fulfilled" ? cioRes.value.dailySignups : {};
@@ -184,12 +170,19 @@ async function loadData(): Promise<DashboardData> {
     );
   }
 
+  // Unwrap the bundled GA responses. If the bundle settled rejected we
+  // fall back to null/empty per range so the dashboard still renders.
+  const heroBundle =
+    heroGaRes.status === "fulfilled" ? heroGaRes.value : null;
+  const sourcesBundle =
+    sourcesRes.status === "fulfilled" ? sourcesRes.value : null;
+
   return {
     heroGa: {
-      "24h": heroGa24hRes.status === "fulfilled" ? heroGa24hRes.value : null,
-      "7d": heroGa7dRes.status === "fulfilled" ? heroGa7dRes.value : null,
-      "30d": heroGa30dRes.status === "fulfilled" ? heroGa30dRes.value : null,
-      "all": heroGaAllRes.status === "fulfilled" ? heroGaAllRes.value : null,
+      "24h": heroBundle?.["24h"] ?? null,
+      "7d": heroBundle?.["7d"] ?? null,
+      "30d": heroBundle?.["30d"] ?? null,
+      "all": heroBundle?.["all"] ?? null,
     },
     heroGaError: heroGaRejected ? errMsg(heroGaRejected) : undefined,
     realtimeUsers:
@@ -199,10 +192,10 @@ async function loadData(): Promise<DashboardData> {
     trend: trendRes.status === "fulfilled" ? trendRes.value : [],
     trendError: trendRes.status === "rejected" ? errMsg(trendRes) : undefined,
     sources: {
-      "24h": sources24hRes.status === "fulfilled" ? sources24hRes.value : [],
-      "7d": sources7dRes.status === "fulfilled" ? sources7dRes.value : [],
-      "30d": sources30dRes.status === "fulfilled" ? sources30dRes.value : [],
-      "all": sourcesAllRes.status === "fulfilled" ? sourcesAllRes.value : [],
+      "24h": sourcesBundle?.["24h"] ?? [],
+      "7d": sourcesBundle?.["7d"] ?? [],
+      "30d": sourcesBundle?.["30d"] ?? [],
+      "all": sourcesBundle?.["all"] ?? [],
     },
     sourcesError: sourcesRejected ? errMsg(sourcesRejected) : undefined,
     cioTotal,
