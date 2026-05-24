@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type {
   GaRangePreset,
   GaTrafficType,
@@ -8,6 +8,7 @@ import type {
   TrafficSource,
 } from "@/lib/ga";
 import type { WaitlistPerson } from "@/lib/cio";
+import { VARIANTS } from "@/lib/variants";
 
 interface Props {
   /** Hero metrics indexed by range, then by traffic-type bucket. */
@@ -17,11 +18,20 @@ interface Props {
   sourcesError?: string;
   /** CIO signup counts bucketed by (traffic-type, range). */
   cioSignupsByRange: Record<GaTrafficType, Record<GaRangePreset, number>>;
+  /** CIO signup counts bucketed by (variant slug, range). */
+  cioSignupsByVariant: Record<string, Record<GaRangePreset, number>>;
+  /** All-time per-variant totals — populates the Variant dropdown
+   *  options with their record counts. */
+  cioTotalByVariant: Record<string, number>;
   cioTotal: number | null;
   cioError?: string;
   realtimeUsers: number | null;
   cioRecent: WaitlistPerson[];
 }
+
+/** Sentinel value for the Variant filter when no variant is selected.
+ *  Distinct from the "control" variant (which IS a real slug). */
+const VARIANT_ALL = "__all__";
 
 const RANGES: GaRangePreset[] = ["24h", "7d", "30d", "all"];
 const TRAFFIC_TYPES: GaTrafficType[] = ["all", "paid", "organic"];
@@ -129,6 +139,8 @@ export default function TopSections({
   sources,
   sourcesError,
   cioSignupsByRange,
+  cioSignupsByVariant,
+  cioTotalByVariant,
   cioTotal,
   cioError,
   realtimeUsers,
@@ -136,11 +148,41 @@ export default function TopSections({
 }: Props) {
   const [range, setRange] = useState<GaRangePreset>("30d");
   const [traffic, setTraffic] = useState<GaTrafficType>("all");
+  const [variant, setVariant] = useState<string>(VARIANT_ALL);
+
+  // Variant dropdown options: control first (it's the baseline), then the
+  // 10 registered variants. Each gets its all-time signup count appended.
+  // Includes registered variants even if they have 0 signups so the option
+  // list is deterministic and explains itself.
+  const variantOptions = useMemo(() => {
+    const opts: Array<{ slug: string; label: string }> = [];
+    opts.push({
+      slug: "control",
+      label: `Control (${cioTotalByVariant.control ?? 0})`,
+    });
+    for (const v of VARIANTS) {
+      opts.push({
+        slug: v.slug,
+        label: `${v.name} (${cioTotalByVariant[v.slug] ?? 0})`,
+      });
+    }
+    return opts;
+  }, [cioTotalByVariant]);
 
   const heroRange = heroGa[range];
   const ga = heroRange ? heroRange[traffic] : null;
-  const cioCount = cioSignupsByRange[traffic][range];
   const currentSources = sources[range];
+
+  // CIO signup count for the current (range × traffic × variant) combo.
+  // When variant === all, use the traffic-bucketed count (covers paid +
+  // organic + all). When variant is specific, fall to the per-variant
+  // bucket — note this loses the paid/organic split (a variant might
+  // not exist in both buckets at all sample sizes), which is fine
+  // because per-variant is itself the dimension being tested.
+  const cioCount =
+    variant === VARIANT_ALL
+      ? cioSignupsByRange[traffic][range]
+      : cioSignupsByVariant[variant]?.[range] ?? 0;
 
   // CANONICAL DENOMINATOR: visitors (GA activeUsers) for every conversion
   // calculation across the dashboard. Sessions and page views are shown as
@@ -161,11 +203,13 @@ export default function TopSections({
       ? ((cioCount / visitors) * 100).toFixed(1)
       : null;
 
-  // Recent signups table also respects the traffic filter so the team can
-  // eyeball the actual people behind the numbers.
-  const filteredRecent = cioRecent.filter((p) =>
-    traffic === "all" ? true : p.trafficType === traffic
-  );
+  // Recent signups table respects BOTH the traffic and variant filters so
+  // the team can eyeball the actual people behind the numbers.
+  const filteredRecent = cioRecent.filter((p) => {
+    if (traffic !== "all" && p.trafficType !== traffic) return false;
+    if (variant !== VARIANT_ALL && p.variant !== variant) return false;
+    return true;
+  });
 
   // Top traffic sources is itself a breakdown of all sources — filtering
   // by paid/organic would just hide rows. Show all, but label the section
@@ -173,10 +217,34 @@ export default function TopSections({
   const sourcesNote =
     traffic === "all" ? "by sessions" : "by sessions · all traffic";
 
+  // Human-readable variant label for cell sub-titles + section headers.
+  const variantLabel =
+    variant === VARIANT_ALL
+      ? null
+      : variantOptions.find((o) => o.slug === variant)?.label.replace(/\s*\(\d+\)$/, "") ?? variant;
+
+  const variantSuffix = variantLabel ? ` · ${variantLabel.toLowerCase()}` : "";
+  const trafficSuffix =
+    traffic !== "all" ? ` · ${trafficLabel(traffic).toLowerCase()}` : "";
+
   return (
     <>
       {/* Top toggle bar — drives every section below until the daily trend. */}
       <div className="dash-top-toggle">
+        <div className="meta">Variant</div>
+        <select
+          className="dash-variant-select"
+          value={variant}
+          onChange={(e) => setVariant(e.target.value)}
+          aria-label="Filter by lander variant"
+        >
+          <option value={VARIANT_ALL}>All variants</option>
+          {variantOptions.map((o) => (
+            <option key={o.slug} value={o.slug}>
+              {o.label}
+            </option>
+          ))}
+        </select>
         <div className="meta">Traffic</div>
         <TrafficToggle value={traffic} onChange={setTraffic} />
         <div className="meta">Window</div>
@@ -188,7 +256,8 @@ export default function TopSections({
         <div className="cell">
           <div className="label">
             Waitlist Signups · {descriptiveRange(range)}
-            {traffic !== "all" ? ` · ${trafficLabel(traffic).toLowerCase()}` : ""}
+            {trafficSuffix}
+            {variantSuffix}
           </div>
           <div className="value accent">{fmt(cioCount)}</div>
           <div className="sub">
@@ -198,21 +267,25 @@ export default function TopSections({
         <div className="cell">
           <div className="label">
             Visitors · {descriptiveRange(range)}
-            {traffic !== "all" ? ` · ${trafficLabel(traffic).toLowerCase()}` : ""}
+            {trafficSuffix}
           </div>
           <div className="value">{fmt(ga?.activeUsers ?? null)}</div>
           <div className="sub">
-            {fmt(ga?.sessions ?? null)} sessions · {fmt(ga?.pageViews ?? null)} page views
+            {fmt(ga?.sessions ?? null)} sessions ·{" "}
+            {fmt(ga?.pageViews ?? null)} page views
+            {variantLabel ? " · site-wide" : ""}
           </div>
         </div>
         <div className="cell">
           <div className="label">
             Conversion · {descriptiveRange(range)}
-            {traffic !== "all" ? ` · ${trafficLabel(traffic).toLowerCase()}` : ""}
+            {trafficSuffix}
+            {variantSuffix}
           </div>
           <div className="value">{cvr ? `${cvr}%` : "—"}</div>
           <div className="sub">
             {fmt(cioCount)} signups / {fmt(visitors)} visitors
+            {variantLabel ? " · site-wide" : ""}
           </div>
         </div>
         <div className="cell">
@@ -269,9 +342,14 @@ export default function TopSections({
           <div className="header">
             <h2>
               Funnel · {descriptiveRange(range)}
-              {traffic !== "all" ? ` · ${trafficLabel(traffic).toLowerCase()}` : ""}
+              {trafficSuffix}
+              {variantSuffix}
             </h2>
-            <div className="meta">rates as % of visitors</div>
+            <div className="meta">
+              {variantLabel
+                ? "signups variant-scoped · others site-wide"
+                : "rates as % of visitors"}
+            </div>
           </div>
           <div className="body">
             <FunnelRow
@@ -300,13 +378,14 @@ export default function TopSections({
         </section>
       </div>
 
-      {/* Recent signups — filtered by traffic toggle, slid up here from the
-          bottom of the page so the filter is visually contiguous with it. */}
+      {/* Recent signups — filtered by both the traffic and variant toggles
+          so the team can eyeball the actual people behind the numbers. */}
       <section className="dash-section">
         <div className="header">
           <h2>
             Recent signups · last 20
-            {traffic !== "all" ? ` · ${trafficLabel(traffic).toLowerCase()}` : ""}
+            {trafficSuffix}
+            {variantSuffix}
           </h2>
           <div className="meta">Customer.io</div>
         </div>
@@ -326,6 +405,8 @@ export default function TopSections({
                   <td className="empty" colSpan={4}>
                     {cioError
                       ? cioError
+                      : variant !== VARIANT_ALL
+                      ? `No ${variantLabel?.toLowerCase()} signups${trafficSuffix} yet.`
                       : traffic === "all"
                       ? "No signups yet."
                       : `No ${trafficLabel(traffic).toLowerCase()} signups yet.`}

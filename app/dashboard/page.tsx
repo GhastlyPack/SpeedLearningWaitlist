@@ -46,6 +46,12 @@ interface DashboardData {
   cioDailySignups: Record<string, number>;
   /** CIO signup totals bucketed by (range × traffic type). */
   cioSignupsByRange: Record<GaTrafficType, Record<GaRangePreset, number>>;
+  /** CIO signup totals bucketed by (variant × range). The variant key
+   *  is the slug — "control" plus every slug from lib/variants.ts. */
+  cioSignupsByVariant: Record<string, Record<GaRangePreset, number>>;
+  /** All-time per-variant totals — drives the Variant filter's option
+   *  ordering and the "(N)" suffix on each variant in the dropdown. */
+  cioTotalByVariant: Record<string, number>;
   cioError?: string;
   metaSpend: Record<RangePreset, MetaInsight | null>;
   metaSpendError?: string;
@@ -145,6 +151,12 @@ async function loadData(): Promise<DashboardData> {
     cioRes.status === "fulfilled"
       ? cioRes.value.totalByTraffic
       : { paid: 0, organic: 0, all: 0 };
+  const cioDailyByVariant =
+    cioRes.status === "fulfilled"
+      ? cioRes.value.dailySignupsByVariant
+      : {};
+  const cioTotalByVariant =
+    cioRes.status === "fulfilled" ? cioRes.value.totalByVariant : {};
   const cioTotal = cioRes.status === "fulfilled" ? cioRes.value.total : null;
 
   const ranges: GaRangePreset[] = ["24h", "7d", "30d", "all"];
@@ -169,6 +181,23 @@ async function loadData(): Promise<DashboardData> {
       r,
       cioTotal ?? undefined
     );
+  }
+
+  // Per-variant range buckets. Iterate every variant slug we saw in the
+  // hydrated CIO records and pre-compute the per-range sum so the client
+  // toggle is a simple lookup, not a recompute.
+  const cioSignupsByVariant: Record<string, Record<GaRangePreset, number>> = {};
+  for (const slug of Object.keys(cioDailyByVariant)) {
+    const dailyForVariant = cioDailyByVariant[slug];
+    const totalForVariant = cioTotalByVariant[slug] ?? 0;
+    cioSignupsByVariant[slug] = {} as Record<GaRangePreset, number>;
+    for (const r of ranges) {
+      cioSignupsByVariant[slug][r] = sumDailyOverRange(
+        dailyForVariant,
+        r,
+        totalForVariant
+      );
+    }
   }
 
   // Unwrap the bundled GA responses. If the bundle settled rejected we
@@ -203,6 +232,8 @@ async function loadData(): Promise<DashboardData> {
     cioRecent: cioRes.status === "fulfilled" ? cioRes.value.recent : [],
     cioDailySignups,
     cioSignupsByRange,
+    cioSignupsByVariant,
+    cioTotalByVariant,
     cioError: cioRes.status === "rejected" ? errMsg(cioRes) : undefined,
     metaSpend: {
       "24h": metaSpend24hRes.status === "fulfilled" ? metaSpend24hRes.value : null,
@@ -333,6 +364,8 @@ export default async function DashboardPage() {
           sources={data.sources}
           sourcesError={data.sourcesError}
           cioSignupsByRange={data.cioSignupsByRange}
+          cioSignupsByVariant={data.cioSignupsByVariant}
+          cioTotalByVariant={data.cioTotalByVariant}
           cioTotal={data.cioTotal}
           cioError={data.cioError}
           realtimeUsers={data.realtimeUsers}

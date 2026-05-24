@@ -112,6 +112,13 @@ export interface WaitlistSummary {
     organic: number;
     all: number;
   };
+  /** Per-variant daily signups map: { variantSlug → { date → count } }.
+   *  The dashboard's Variant filter sums over this to produce range-
+   *  bucketed counts for the active variant. Includes "control". */
+  dailySignupsByVariant: Record<string, Record<string, number>>;
+  /** Total signups per variant. Used for at-a-glance per-variant counts
+   *  on the dashboard and to populate the Variant dropdown options. */
+  totalByVariant: Record<string, number>;
 }
 
 interface SearchIdentifier {
@@ -382,23 +389,31 @@ export async function getWaitlistSummary(
 
   // Group by UTC date for the daily chart, and again split by traffic type
   // so the dashboard's paid/organic/all filter has pre-aggregated data.
+  // Additionally bucket by variant so the dashboard's Variant filter can
+  // surface per-variant signup counts and conversion math.
   const dailySignups: Record<string, number> = {};
   const dailySignupsByTraffic = {
     paid: {} as Record<string, number>,
     organic: {} as Record<string, number>,
   };
+  const dailySignupsByVariant: Record<string, Record<string, number>> = {};
+  const totalByVariant: Record<string, number> = {};
   let paidTotal = 0;
   let organicTotal = 0;
 
   for (const p of people) {
     if (p.trafficType === "paid") paidTotal++;
     else organicTotal++;
+    totalByVariant[p.variant] = (totalByVariant[p.variant] || 0) + 1;
 
     if (!p.signedUpAt) continue;
     const dateStr = p.signedUpAt.slice(0, 10); // "2026-05-21"
     dailySignups[dateStr] = (dailySignups[dateStr] || 0) + 1;
     const trafficMap = dailySignupsByTraffic[p.trafficType];
     trafficMap[dateStr] = (trafficMap[dateStr] || 0) + 1;
+    if (!dailySignupsByVariant[p.variant]) dailySignupsByVariant[p.variant] = {};
+    const variantMap = dailySignupsByVariant[p.variant];
+    variantMap[dateStr] = (variantMap[dateStr] || 0) + 1;
   }
 
   return {
@@ -411,5 +426,7 @@ export async function getWaitlistSummary(
       organic: organicTotal,
       all: total,
     },
+    dailySignupsByVariant,
+    totalByVariant,
   };
 }
