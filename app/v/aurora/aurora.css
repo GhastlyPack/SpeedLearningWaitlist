@@ -1,0 +1,384 @@
+/* Aurora UI lander — /v/aurora
+ *
+ * Full-bleed flowing gradient backdrop (aurora borealis vibes — teal,
+ * violet, magenta, indigo swirls). Foreground reads as crisp white +
+ * dark ink, so the gradient is the show and the content is the
+ * negative space. Different bet from Glass: glass cards LET the
+ * gradient through; here the cards are opaque white so contrast is
+ * stark.
+ *
+ * Visual rules:
+ *   - 4-blob conic-ish mesh, slower opacity than glass (more saturated)
+ *   - Foreground: solid white cards (#ffffff), ink (#0f172a)
+ *   - One accent: violet (#7c3aed), used for CTA + a highlighted word
+ *   - 18-20px border-radius
+ *   - Subtle drop-shadow on cards for lift off the gradient
+ *
+ * Scoped via .au-* class prefix.
+ */
+
+.au-page {
+  --au-ink: #0f172a;
+  --au-ink-mute: #475569;
+  --au-paper: #ffffff;
+  --au-violet: #7c3aed;
+  --au-violet-hi: #6d28d9;
+  --au-teal: #14b8a6;
+  --au-magenta: #ec4899;
+  --au-indigo: #6366f1;
+
+  color: var(--au-ink);
+  font-family: var(--font-plex), system-ui, sans-serif;
+  min-height: 100vh;
+  min-height: 100svh;
+  background: #f5f7fc;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* The aurora — fixed-position, full-bleed, multiple blurred blobs */
+
+.au-aurora {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.au-aurora .swirl {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.75;
+  will-change: transform;
+}
+
+.au-aurora .swirl.s1 {
+  width: 70vw;
+  height: 70vw;
+  background: var(--au-teal);
+  top: -20vw;
+  left: -25vw;
+}
+
+.au-aurora .swirl.s2 {
+  width: 55vw;
+  height: 55vw;
+  background: var(--au-violet);
+  top: 5vh;
+  right: -15vw;
+  opacity: 0.7;
+}
+
+.au-aurora .swirl.s3 {
+  width: 60vw;
+  height: 60vw;
+  background: var(--au-magenta);
+  bottom: -20vw;
+  right: 5vw;
+  opacity: 0.5;
+}
+
+.au-aurora .swirl.s4 {
+  width: 45vw;
+  height: 45vw;
+  background: var(--au-indigo);
+  bottom: 0;
+  left: -10vw;
+  opacity: 0.55;
+}
+
+/* Soft white veil to keep text readable over the chroma */
+
+.au-aurora::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.4) 0%,
+    rgba(255, 255, 255, 0.25) 30%,
+    rgba(255, 255, 255, 0.65) 100%
+  );
+}
+
+.au-page > main,
+.au-page > header,
+.au-page > footer {
+  position: relative;
+  z-index: 1;
+}
+
+.au-container {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* ---------- TOPBAR ---------- */
+
+.au-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 22px 32px;
+}
+
+.au-topbar .wordmark {
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.4px;
+  color: var(--au-ink);
+}
+
+.au-topbar .pill {
+  background: var(--au-paper);
+  border-radius: 999px;
+  padding: 7px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--au-ink-mute);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+}
+
+/* ---------- HERO ---------- */
+
+.au-hero {
+  padding: 80px 24px 120px;
+  text-align: center;
+}
+
+.au-eyebrow {
+  display: inline-block;
+  background: var(--au-paper);
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--au-violet);
+  margin-bottom: 28px;
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.12);
+}
+
+.au-headline {
+  font-size: clamp(44px, 8vw, 88px);
+  font-weight: 700;
+  letter-spacing: -2.5px;
+  line-height: 1.02;
+  margin: 0 auto 22px;
+  max-width: 14ch;
+  color: var(--au-ink);
+}
+
+.au-headline .accent {
+  color: var(--au-violet);
+}
+
+.au-subhead {
+  font-size: clamp(16px, 1.5vw, 19px);
+  line-height: 1.55;
+  color: var(--au-ink-mute);
+  max-width: 50ch;
+  margin: 0 auto 40px;
+}
+
+/* ---------- FORM CARD ---------- */
+
+.au-card {
+  background: var(--au-paper);
+  border-radius: 22px;
+  padding: 32px;
+  max-width: 460px;
+  margin: 0 auto;
+  text-align: left;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12),
+    0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+.au-card h2 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin: 0 0 6px;
+}
+
+.au-card .lede {
+  font-size: 14px;
+  color: var(--au-ink-mute);
+  margin: 0 0 20px;
+}
+
+.au-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.au-field label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--au-ink);
+  margin-bottom: 6px;
+}
+
+.au-field input {
+  width: 100%;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 13px 14px;
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--au-ink);
+  transition: border-color 180ms ease, box-shadow 180ms ease,
+    background 180ms ease;
+}
+
+.au-field input::placeholder {
+  color: #94a3b8;
+}
+
+.au-field input:focus {
+  outline: none;
+  background: var(--au-paper);
+  border-color: var(--au-violet);
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.15);
+}
+
+.au-field input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.au-cta {
+  background: var(--au-violet);
+  color: #fff;
+  border: 0;
+  border-radius: 12px;
+  padding: 14px 22px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 180ms ease, transform 180ms ease,
+    box-shadow 180ms ease;
+  margin-top: 4px;
+  box-shadow: 0 8px 22px rgba(124, 58, 237, 0.35);
+}
+
+.au-cta:hover:not(:disabled),
+.au-cta:focus-visible:not(:disabled) {
+  outline: none;
+  background: var(--au-violet-hi);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(124, 58, 237, 0.45);
+}
+
+.au-cta:disabled {
+  background: #c4b5fd;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.au-form-meta {
+  font-size: 12.5px;
+  color: var(--au-ink-mute);
+  margin-top: 14px;
+  text-align: center;
+}
+
+.au-form-meta.error {
+  color: var(--au-magenta);
+  font-weight: 500;
+}
+
+.au-form-meta.success {
+  color: var(--au-violet);
+  font-weight: 500;
+}
+
+/* ---------- OUTPUTS — minimal floating list ---------- */
+
+.au-section {
+  padding: 48px 24px 80px;
+}
+
+.au-section-head {
+  text-align: center;
+  margin-bottom: 36px;
+}
+
+.au-section-head .kicker {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--au-violet);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.au-section-head h2 {
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 700;
+  letter-spacing: -1px;
+  line-height: 1.1;
+  margin: 0 auto;
+  max-width: 22ch;
+  color: var(--au-ink);
+}
+
+.au-pill-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.au-pill {
+  background: var(--au-paper);
+  border-radius: 999px;
+  padding: 11px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--au-ink);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+}
+
+/* ---------- REPEAT CTA ---------- */
+
+.au-repeat-cta {
+  padding: 32px 24px 96px;
+  text-align: center;
+}
+
+/* ---------- FOOTER ---------- */
+
+.au-footer {
+  padding: 28px 32px 40px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12.5px;
+  color: var(--au-ink-mute);
+}
+
+.au-footer a {
+  color: var(--au-violet);
+  text-decoration: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .au-field input,
+  .au-cta {
+    transition: none !important;
+  }
+  .au-cta:hover:not(:disabled),
+  .au-cta:focus-visible:not(:disabled) {
+    transform: none;
+  }
+}
