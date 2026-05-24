@@ -1,0 +1,412 @@
+/* Cinematic Dark lander — /v/cinema
+ *
+ * OLED black background, restrained warm-amber accent, large serif
+ * headline. Reads like a film poster or premium fintech app. Lots of
+ * negative space; type carries the design.
+ *
+ * Visual rules:
+ *   - True black (#0a0a0a) bg; pure white (#fafaf7) for high-contrast text
+ *   - Amber accent (#f59e0b) used sparingly — eyebrow, headline italic,
+ *     CTA glow, divider lines
+ *   - Big serif (Newsreader) at light/medium weights for the headline
+ *   - Mono labels in muted gray for chrome
+ *   - Subtle film-grain noise overlay on the hero (CSS gradient noise)
+ *   - Forms sit on a slightly-elevated dark card (#161616) with a
+ *     1px gray border
+ *
+ * Scoped via .cn-* class prefix.
+ */
+
+.cn-page {
+  --cn-bg: #0a0a0a;
+  --cn-surface: #161616;
+  --cn-surface-hi: #1f1f1f;
+  --cn-rule: #2a2a2a;
+  --cn-ink: #fafaf7;
+  --cn-ink-mute: #9a9994;
+  --cn-amber: #f59e0b;
+  --cn-amber-soft: rgba(245, 158, 11, 0.15);
+  --cn-amber-glow: 0 0 24px rgba(245, 158, 11, 0.35);
+  --cn-serif: var(--font-cinema, var(--font-serif, Newsreader)), Georgia,
+    "Times New Roman", serif;
+  --cn-sans: var(--font-plex), ui-sans-serif, system-ui, sans-serif;
+  --cn-mono: var(--font-mono), ui-monospace, monospace;
+
+  background: var(--cn-bg);
+  color: var(--cn-ink);
+  font-family: var(--cn-sans);
+  min-height: 100vh;
+  min-height: 100svh;
+}
+
+.cn-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* ---------- TOPBAR ---------- */
+
+.cn-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 22px 32px;
+  border-bottom: 1px solid var(--cn-rule);
+}
+
+.cn-topbar .wordmark {
+  font-family: var(--cn-serif);
+  font-weight: 500;
+  font-size: 19px;
+  letter-spacing: -0.4px;
+  color: var(--cn-ink);
+}
+
+.cn-topbar .meta {
+  font-family: var(--cn-mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--cn-ink-mute);
+}
+
+/* ---------- HERO ---------- */
+
+.cn-hero {
+  padding: 96px 24px 80px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.cn-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 50% 0%,
+    rgba(245, 158, 11, 0.06) 0%,
+    transparent 50%
+  );
+  pointer-events: none;
+}
+
+.cn-hero > * {
+  position: relative;
+}
+
+.cn-eyebrow {
+  font-family: var(--cn-mono);
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--cn-amber);
+  margin-bottom: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.cn-eyebrow .line {
+  display: inline-block;
+  width: 32px;
+  height: 1px;
+  background: var(--cn-amber);
+}
+
+.cn-headline {
+  font-family: var(--cn-serif);
+  font-size: clamp(48px, 9vw, 96px);
+  font-weight: 300;
+  line-height: 1.02;
+  letter-spacing: -2.5px;
+  margin: 0 auto 24px;
+  max-width: 16ch;
+  color: var(--cn-ink);
+}
+
+.cn-headline em {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--cn-amber);
+}
+
+.cn-subhead {
+  font-family: var(--cn-serif);
+  font-size: clamp(17px, 1.7vw, 21px);
+  line-height: 1.45;
+  color: var(--cn-ink-mute);
+  max-width: 52ch;
+  margin: 0 auto 48px;
+}
+
+/* The form card sits centered, dark-elevated */
+
+.cn-form-card {
+  background: var(--cn-surface);
+  border: 1px solid var(--cn-rule);
+  padding: 32px;
+  max-width: 460px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.cn-form-card h2 {
+  font-family: var(--cn-serif);
+  font-weight: 500;
+  font-size: 24px;
+  letter-spacing: -0.4px;
+  margin: 0 0 6px;
+  color: var(--cn-ink);
+}
+
+.cn-form-card .lede {
+  font-family: var(--cn-mono);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--cn-ink-mute);
+  margin: 0 0 22px;
+}
+
+.cn-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cn-field label {
+  display: block;
+  font-family: var(--cn-mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--cn-ink-mute);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.cn-field input {
+  width: 100%;
+  background: var(--cn-bg);
+  border: 1px solid var(--cn-rule);
+  padding: 13px 14px;
+  font-family: var(--cn-sans);
+  font-size: 15px;
+  color: var(--cn-ink);
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.cn-field input::placeholder {
+  color: #555;
+}
+
+.cn-field input:focus {
+  outline: none;
+  border-color: var(--cn-amber);
+  box-shadow: 0 0 0 3px var(--cn-amber-soft);
+}
+
+.cn-field input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cn-cta {
+  background: var(--cn-amber);
+  color: var(--cn-bg);
+  border: 0;
+  padding: 15px 22px;
+  font-family: var(--cn-sans);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: box-shadow 220ms ease, transform 220ms ease;
+  margin-top: 4px;
+}
+
+.cn-cta:hover:not(:disabled),
+.cn-cta:focus-visible:not(:disabled) {
+  outline: none;
+  box-shadow: var(--cn-amber-glow);
+  transform: translateY(-1px);
+}
+
+.cn-cta:disabled {
+  background: #3a3a3a;
+  color: #777;
+  cursor: not-allowed;
+}
+
+.cn-form-meta {
+  font-family: var(--cn-mono);
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  color: var(--cn-ink-mute);
+  margin-top: 14px;
+  text-align: center;
+}
+
+.cn-form-meta.error {
+  color: var(--cn-amber);
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: var(--cn-serif);
+  font-style: italic;
+  font-size: 14px;
+}
+
+.cn-form-meta.success {
+  color: var(--cn-amber);
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: var(--cn-serif);
+  font-style: italic;
+  font-size: 14px;
+}
+
+/* ---------- SECTION ---------- */
+
+.cn-section {
+  padding: 80px 24px;
+  border-top: 1px solid var(--cn-rule);
+}
+
+.cn-section-head {
+  text-align: center;
+  margin-bottom: 56px;
+}
+
+.cn-section-head .kicker {
+  font-family: var(--cn-mono);
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--cn-amber);
+  margin-bottom: 16px;
+}
+
+.cn-section-head h2 {
+  font-family: var(--cn-serif);
+  font-size: clamp(32px, 5vw, 52px);
+  font-weight: 400;
+  letter-spacing: -1.2px;
+  line-height: 1.1;
+  margin: 0 auto;
+  max-width: 18ch;
+  color: var(--cn-ink);
+}
+
+.cn-section-head h2 em {
+  font-style: italic;
+  color: var(--cn-amber);
+}
+
+/* Output list — a thin elegant column, not a tile grid */
+
+.cn-output-list {
+  max-width: 600px;
+  margin: 0 auto;
+  border-top: 1px solid var(--cn-rule);
+}
+
+.cn-output-list .row {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 20px;
+  align-items: baseline;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--cn-rule);
+}
+
+.cn-output-list .row .n {
+  font-family: var(--cn-mono);
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  color: var(--cn-amber);
+}
+
+.cn-output-list .row .name {
+  font-family: var(--cn-serif);
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: -0.3px;
+  color: var(--cn-ink);
+}
+
+/* Quote section */
+
+.cn-quote {
+  text-align: center;
+  padding: 80px 32px;
+}
+
+.cn-quote blockquote {
+  font-family: var(--cn-serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1.2;
+  letter-spacing: -0.8px;
+  margin: 0 auto 24px;
+  max-width: 22ch;
+  color: var(--cn-ink);
+}
+
+.cn-quote .attribution {
+  font-family: var(--cn-mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--cn-ink-mute);
+}
+
+/* Repeat CTA */
+
+.cn-repeat-cta {
+  padding: 80px 24px 120px;
+  text-align: center;
+  border-top: 1px solid var(--cn-rule);
+}
+
+/* ---------- FOOTER ---------- */
+
+.cn-footer {
+  border-top: 1px solid var(--cn-rule);
+  padding: 28px 32px 40px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-family: var(--cn-mono);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--cn-ink-mute);
+}
+
+.cn-footer a {
+  color: var(--cn-amber);
+  text-decoration: none;
+}
+
+.cn-footer a:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .cn-cta,
+  .cn-field input {
+    transition: none !important;
+  }
+  .cn-cta:hover:not(:disabled),
+  .cn-cta:focus-visible:not(:disabled) {
+    transform: none;
+  }
+}
