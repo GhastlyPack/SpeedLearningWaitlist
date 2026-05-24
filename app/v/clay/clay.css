@@ -1,0 +1,394 @@
+/* Claymorphism lander — /v/clay
+ *
+ * Soft 3D pastel surfaces with double inset+outset shadows for a
+ * "pressed plasticine" feel. Big rounded everything. Friendly,
+ * approachable, tactile — the opposite end of the spectrum from
+ * brutalist or terminal.
+ *
+ * Visual rules:
+ *   - Pastel peach canvas (#fbe9d8) — warm but desaturated
+ *   - Clay surfaces: pastel pink / lavender / mint / butter yellow,
+ *     all with the same shadow recipe (outer drop + inner highlight
+ *     top + inner shadow bottom)
+ *   - 32-40px border-radius for the puffy clay feel
+ *   - Plump display sans (IBM Plex 700) for friendly headlines
+ *   - No straight edges anywhere
+ *
+ * Scoped via .cl-* class prefix.
+ */
+
+.cl-page {
+  --cl-canvas: #fbe9d8;
+  --cl-ink: #4a3826;
+  --cl-ink-mute: #8a715a;
+  --cl-pink: #fbc7d4;
+  --cl-lavender: #d8d0f8;
+  --cl-mint: #c4ebd1;
+  --cl-butter: #fbe18a;
+  --cl-coral: #ff8a6c;
+  --cl-paper: #fff7ef;
+  --cl-accent: #ff5a3c;
+
+  --cl-shadow-out: 6px 6px 16px rgba(151, 100, 60, 0.18),
+    -6px -6px 16px rgba(255, 255, 255, 0.7);
+  --cl-shadow-soft: 4px 4px 12px rgba(151, 100, 60, 0.14),
+    -4px -4px 12px rgba(255, 255, 255, 0.6);
+  --cl-shadow-inset: inset 3px 3px 8px rgba(151, 100, 60, 0.14),
+    inset -3px -3px 8px rgba(255, 255, 255, 0.7);
+
+  background: var(--cl-canvas);
+  color: var(--cl-ink);
+  font-family: var(--font-plex), system-ui, sans-serif;
+  min-height: 100vh;
+  min-height: 100svh;
+}
+
+.cl-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* ---------- TOPBAR ---------- */
+
+.cl-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 22px 32px;
+}
+
+.cl-topbar .wordmark {
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.4px;
+  color: var(--cl-ink);
+}
+
+.cl-topbar .pill {
+  background: var(--cl-paper);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cl-ink-mute);
+  box-shadow: var(--cl-shadow-soft);
+}
+
+/* ---------- HERO ---------- */
+
+.cl-hero {
+  padding: 48px 24px 80px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 36px;
+  align-items: center;
+}
+
+@media (min-width: 880px) {
+  .cl-hero {
+    grid-template-columns: 1.1fr 1fr;
+    gap: 56px;
+    padding: 64px 24px 96px;
+  }
+}
+
+.cl-eyebrow {
+  display: inline-block;
+  background: var(--cl-butter);
+  color: var(--cl-ink);
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  margin-bottom: 24px;
+  box-shadow: var(--cl-shadow-soft);
+}
+
+.cl-headline {
+  font-size: clamp(40px, 7vw, 70px);
+  font-weight: 700;
+  letter-spacing: -2px;
+  line-height: 1.05;
+  margin: 0 0 22px;
+  color: var(--cl-ink);
+}
+
+.cl-headline .accent {
+  display: inline-block;
+  background: var(--cl-pink);
+  padding: 0 14px 4px;
+  border-radius: 18px;
+  box-shadow: var(--cl-shadow-soft);
+  margin: 0 4px;
+}
+
+.cl-subhead {
+  font-size: clamp(16px, 1.6vw, 19px);
+  line-height: 1.5;
+  color: var(--cl-ink-mute);
+  max-width: 38ch;
+  margin: 0 0 32px;
+}
+
+.cl-bubbles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cl-bubble {
+  background: var(--cl-paper);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--cl-ink);
+  box-shadow: var(--cl-shadow-soft);
+}
+
+.cl-bubble.mint {
+  background: var(--cl-mint);
+}
+
+.cl-bubble.lavender {
+  background: var(--cl-lavender);
+}
+
+.cl-bubble.pink {
+  background: var(--cl-pink);
+}
+
+/* ---------- FORM CARD ---------- */
+
+.cl-form-card {
+  background: var(--cl-paper);
+  border-radius: 36px;
+  padding: 32px;
+  box-shadow: var(--cl-shadow-out);
+  max-width: 460px;
+  width: 100%;
+}
+
+.cl-form-card h2 {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin: 0 0 6px;
+}
+
+.cl-form-card .lede {
+  font-size: 14px;
+  color: var(--cl-ink-mute);
+  margin: 0 0 20px;
+}
+
+.cl-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cl-field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cl-ink);
+  margin-bottom: 7px;
+}
+
+.cl-field input {
+  width: 100%;
+  background: var(--cl-canvas);
+  border: 0;
+  border-radius: 18px;
+  padding: 14px 18px;
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--cl-ink);
+  box-shadow: var(--cl-shadow-inset);
+  transition: box-shadow 180ms ease;
+}
+
+.cl-field input::placeholder {
+  color: var(--cl-ink-mute);
+  opacity: 0.55;
+}
+
+.cl-field input:focus {
+  outline: none;
+  box-shadow: var(--cl-shadow-inset),
+    0 0 0 3px var(--cl-coral);
+}
+
+.cl-field input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cl-cta {
+  background: var(--cl-accent);
+  color: #fff;
+  border: 0;
+  border-radius: 22px;
+  padding: 16px 22px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 5px 5px 14px rgba(255, 90, 60, 0.35),
+    -3px -3px 10px rgba(255, 255, 255, 0.5);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+  margin-top: 6px;
+}
+
+.cl-cta:hover:not(:disabled),
+.cl-cta:focus-visible:not(:disabled) {
+  outline: none;
+  transform: translateY(-2px);
+  box-shadow: 7px 9px 20px rgba(255, 90, 60, 0.4),
+    -3px -3px 10px rgba(255, 255, 255, 0.5);
+}
+
+.cl-cta:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: inset 3px 3px 8px rgba(0, 0, 0, 0.2);
+}
+
+.cl-cta:disabled {
+  background: #c8b8a8;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.cl-form-meta {
+  font-size: 12.5px;
+  color: var(--cl-ink-mute);
+  margin-top: 14px;
+  text-align: center;
+}
+
+.cl-form-meta.error {
+  color: var(--cl-accent);
+  font-weight: 600;
+}
+
+.cl-form-meta.success {
+  color: var(--cl-ink);
+  font-weight: 600;
+}
+
+/* ---------- OUTPUT BLOBS ---------- */
+
+.cl-section {
+  padding: 56px 24px;
+}
+
+.cl-section-head {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.cl-section-head .kicker {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--cl-ink-mute);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.cl-section-head h2 {
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 700;
+  letter-spacing: -1px;
+  line-height: 1.1;
+  margin: 0 auto;
+  max-width: 22ch;
+}
+
+.cl-blob-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+
+@media (min-width: 720px) {
+  .cl-blob-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+.cl-blob {
+  background: var(--cl-paper);
+  border-radius: 28px;
+  padding: 22px 16px;
+  text-align: center;
+  box-shadow: var(--cl-shadow-soft);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--cl-ink);
+}
+
+.cl-blob:nth-child(5n + 1) {
+  background: var(--cl-pink);
+}
+
+.cl-blob:nth-child(5n + 2) {
+  background: var(--cl-mint);
+}
+
+.cl-blob:nth-child(5n + 3) {
+  background: var(--cl-lavender);
+}
+
+.cl-blob:nth-child(5n + 4) {
+  background: var(--cl-butter);
+}
+
+.cl-blob:nth-child(5n + 5) {
+  background: var(--cl-paper);
+}
+
+/* ---------- REPEAT CTA ---------- */
+
+.cl-repeat-cta {
+  padding: 56px 24px 88px;
+  text-align: center;
+}
+
+.cl-repeat-cta .cl-form-card {
+  margin: 0 auto;
+  text-align: left;
+}
+
+/* ---------- FOOTER ---------- */
+
+.cl-footer {
+  padding: 28px 32px 40px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12.5px;
+  color: var(--cl-ink-mute);
+}
+
+.cl-footer a {
+  color: var(--cl-accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cl-field input,
+  .cl-cta {
+    transition: none !important;
+  }
+  .cl-cta:hover:not(:disabled),
+  .cl-cta:focus-visible:not(:disabled),
+  .cl-cta:active:not(:disabled) {
+    transform: none;
+  }
+}
