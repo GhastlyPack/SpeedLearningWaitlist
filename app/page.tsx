@@ -40,7 +40,7 @@ export default function Home() {
               <span>50% off your first Deep Dive &mdash; waitlist signups only.</span>
             </div>
 
-            <WaitlistForm />
+            <WaitlistForm variant="control" />
           </div>
 
           <aside className="compare">

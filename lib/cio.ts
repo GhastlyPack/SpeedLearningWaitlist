@@ -84,6 +84,10 @@ export interface WaitlistPerson {
   /** Computed at hydrate time. "paid" if utm_medium signals a paid channel
    *  or fbclid was present; "organic" otherwise. */
   trafficType: "paid" | "organic";
+  /** Lander variant the signup came from. "control" for the root lander,
+   *  otherwise a slug matching one of VARIANTS in lib/variants.ts. Defaults
+   *  to "control" for older records that pre-date variant tracking. */
+  variant: string;
   /** True if the email belongs to an internal team domain (e.g.
    *  @bowskyventures.com). Filtered out of dashboard counts; left in CIO
    *  so we can verify the confirmation email flow without polluting metrics. */
@@ -301,6 +305,11 @@ export async function getCustomerByCioId(
         ? storedTraffic
         : classifyCioTraffic({ utmMedium, fbclidPresent }));
 
+    // Variant defaults to "control" for the root lander and for older
+    // records that pre-date variant tracking. The dashboard's Variant
+    // filter treats undefined as "control" so historic data still buckets.
+    const variant = attrString(attrs, "variant") || "control";
+
     return {
       cioId,
       email:
@@ -319,6 +328,7 @@ export async function getCustomerByCioId(
       referredBy: attrString(attrs, "referred_by"),
       fbclidPresent,
       trafficType,
+      variant,
       internal,
     };
   } catch {

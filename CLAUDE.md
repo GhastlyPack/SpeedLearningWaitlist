@@ -97,6 +97,33 @@ Pure data clients — no React, no Next.js specifics:
 
 No CSS framework. Design tokens (`--ink`, `--ax`, `--paper`, `--rule`, etc.) live in `app/globals.css` and are reused by `app/dashboard/dashboard.css`. Fonts come from `next/font/google` (IBM Plex Sans + JetBrains Mono + Newsreader). When adding new UI, use the existing tokens rather than introducing colors.
 
+## Lander variants (`/v/<slug>`)
+
+10 alternative lander designs live under `app/v/<slug>/page.tsx` for a conversion test. Each variant:
+- Shares `WaitlistForm` (passes its own slug via the `variant` prop)
+- Writes `variant: <slug>` as a CIO attribute via `/api/cio-track`
+- Falls under the same global layout (GA, Meta Pixel, UTM capture all apply)
+- Owns its own visual identity — `app/v/layout.tsx` is intentionally a pass-through
+
+The registry is `lib/variants.ts`. `resolveVariantSlug` validates incoming slugs server-side so a client can't write garbage strings as `variant` on CIO records. Unknown / missing → `"control"` (the root lander). The control lander at `app/page.tsx` explicitly passes `variant="control"` to its `WaitlistForm`.
+
+`app/v/page.tsx` is an internal `noindex` index of all variants for team browsing.
+
+## UI/UX Pro Max skill (`.claude/skills/ui-ux-pro-max/`)
+
+A Python-based Claude Code skill for design intelligence — color palettes, font pairings, style catalogs, UX rule database, and a reasoning engine that emits a coherent design system for a given product type. Used while building lander variants. Requires Python 3.
+
+```bash
+# Generate a design system for a new variant
+python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<product keywords> <style hint>" --design-system -p "<variant name>"
+
+# Search a specific dimension
+python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<keywords>" --domain style
+python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<keywords>" --domain color
+```
+
+Not a runtime dep — purely an authoring tool. Safe to delete the skill folder once the conversion test concludes if we don't keep iterating on variants.
+
 ## Deploy
 
 Vercel auto-deploys `main` on push to `github.com/GhastlyPack/SpeedLearningWaitlist`. Two domains attached: `speedlearning.com` (apex + `www`) and `dash.speedlearning.com`. Env vars are managed in Vercel → Settings → Environment Variables; secrets are marked Sensitive. See `.env.example` for the full list and `README.md` for the wiring playbook (GA service account, CIO API keys, Meta tokens, etc.).

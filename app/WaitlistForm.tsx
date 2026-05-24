@@ -37,7 +37,17 @@ function newEventId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export default function WaitlistForm() {
+interface WaitlistFormProps {
+  /**
+   * Which lander variant the form is being rendered inside. Passed straight
+   * through to /api/cio-track and stored as a CIO attribute so the dashboard
+   * can break down signups by variant. Defaults to "control" — the canonical
+   * lander at speedlearning.com/.
+   */
+  variant?: string;
+}
+
+export default function WaitlistForm({ variant = "control" }: WaitlistFormProps = {}) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -150,6 +160,9 @@ export default function WaitlistForm() {
           last_name: cleanLast || undefined,
           source: "speedlearning.com",
           signed_up_at: nowIso,
+          // Which lander variant this signup came from. "control" for the
+          // root /, otherwise the variant slug (e.g. "brutalist", "glass").
+          variant,
           // First-touch acquisition attributes, if present:
           utm_source: utms.utm_source,
           utm_medium: utms.utm_medium,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { isInternalEmail } from "@/lib/internal";
 import { classifyCioTraffic } from "@/lib/cio";
+import { resolveVariantSlug } from "@/lib/variants";
 
 /**
  * Customer.io Track API — server-side direct write to the Journeys workspace.
@@ -66,6 +67,10 @@ interface CioTrackBody {
   last_name?: string;
   source?: string;
   signed_up_at?: string;
+  /** Lander variant slug ("control" for the root /, otherwise a /v/<slug>
+   *  name). Stored as the `variant` CIO attribute so the dashboard can
+   *  break down conversion by design variant. */
+  variant?: string;
   // UTM / acquisition attributes (any may be undefined)
   utm_source?: string;
   utm_medium?: string;
@@ -133,6 +138,11 @@ export async function POST(req: NextRequest) {
     fbclidPresent: !!body.fbclid,
   });
 
+  // Resolve the variant slug against the registry so a malicious client
+  // can't write garbage strings as `variant` on a CIO record. Unknown or
+  // missing values fall back to "control" (the root / lander).
+  const variant = resolveVariantSlug(body.variant) || "control";
+
   const traits: Record<string, unknown> = {
     email,
     waitlist: true,
@@ -142,6 +152,7 @@ export async function POST(req: NextRequest) {
     referral_code: referralCode,
     internal,
     traffic_type: trafficType,
+    variant,
   };
   if (firstName) traits.first_name = firstName;
   if (lastName) traits.last_name = lastName;
@@ -210,6 +221,7 @@ export async function POST(req: NextRequest) {
         data: {
           source,
           signed_up_at: nowIso,
+          variant,
           utm_source: body.utm_source,
           utm_medium: body.utm_medium,
           utm_campaign: body.utm_campaign,

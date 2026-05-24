@@ -38,3 +38,7 @@ referenceImages/
 SL_STYLE.txt
 SL_ICON.png
 SL_LOGO.png
+
+# Python bytecode from the UI/UX Pro Max skill
+__pycache__/
+*.pyc
