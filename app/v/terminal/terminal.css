@@ -1,0 +1,421 @@
+/* Cyberpunk / Terminal lander — /v/terminal
+ *
+ * Green-on-black terminal aesthetic. Monospace everything. CRT
+ * scanlines as a CSS overlay. ASCII-art borders made from unicode
+ * box-drawing characters. Form looks like a CLI prompt.
+ *
+ * Visual rules:
+ *   - True black bg, phosphor green (#33ff7a) ink, dim green
+ *     (#1a7a3c) for secondary text
+ *   - JetBrains Mono everywhere — no proportional fonts, no display
+ *     serifs. The mono IS the design.
+ *   - Subtle scanline overlay across the whole page
+ *   - Blinking cursor on the headline
+ *   - Headers and forms use ASCII box-drawing borders (─ ┃ ┏ ┓ ┗ ┛)
+ *
+ * Scoped via .tm-* class prefix.
+ */
+
+.tm-page {
+  --tm-bg: #050807;
+  --tm-bg-hi: #0c1411;
+  --tm-green: #33ff7a;
+  --tm-green-dim: #1a7a3c;
+  --tm-green-soft: rgba(51, 255, 122, 0.12);
+  --tm-amber: #ffb13c;
+  --tm-red: #ff4757;
+
+  background: var(--tm-bg);
+  color: var(--tm-green);
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+  min-height: 100svh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* CRT scanlines — fixed pseudo-element over the whole viewport */
+
+.tm-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 3px,
+    rgba(0, 0, 0, 0.25) 3px,
+    rgba(0, 0, 0, 0.25) 4px
+  );
+  opacity: 0.4;
+}
+
+/* CRT vignette / phosphor glow */
+
+.tm-page::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 0%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
+}
+
+.tm-container {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 24px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- TOPBAR ---------- */
+
+.tm-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--tm-green-dim);
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+.tm-topbar .left {
+  color: var(--tm-green);
+}
+
+.tm-topbar .right {
+  color: var(--tm-green-dim);
+}
+
+.tm-topbar .blink {
+  display: inline-block;
+  width: 8px;
+  height: 14px;
+  background: var(--tm-green);
+  margin-left: 4px;
+  vertical-align: middle;
+  animation: tm-blink 1s steps(2) infinite;
+}
+
+@keyframes tm-blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ---------- HERO ---------- */
+
+.tm-hero {
+  padding: 56px 24px 32px;
+}
+
+.tm-ascii-rule {
+  color: var(--tm-green-dim);
+  font-size: 14px;
+  white-space: pre;
+  overflow: hidden;
+  user-select: none;
+  letter-spacing: -0.5px;
+}
+
+.tm-prompt {
+  color: var(--tm-amber);
+  font-size: 12px;
+  margin-bottom: 18px;
+}
+
+.tm-prompt .path {
+  color: var(--tm-green);
+}
+
+.tm-headline {
+  font-family: var(--font-mono), monospace;
+  font-size: clamp(26px, 4vw, 42px);
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  line-height: 1.15;
+  margin: 16px 0 24px;
+  color: var(--tm-green);
+  text-shadow: 0 0 18px rgba(51, 255, 122, 0.4);
+}
+
+.tm-headline .cursor {
+  display: inline-block;
+  width: 14px;
+  height: 1em;
+  background: var(--tm-green);
+  margin-left: 4px;
+  vertical-align: text-bottom;
+  animation: tm-blink 1s steps(2) infinite;
+}
+
+.tm-subhead {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--tm-green-dim);
+  max-width: 64ch;
+  margin: 0 0 24px;
+}
+
+.tm-output {
+  background: var(--tm-bg-hi);
+  border-left: 2px solid var(--tm-green-dim);
+  padding: 12px 16px;
+  margin: 18px 0;
+  color: var(--tm-green);
+  font-size: 13px;
+}
+
+.tm-output .line {
+  display: block;
+}
+
+.tm-output .ok {
+  color: var(--tm-green);
+}
+
+.tm-output .info {
+  color: var(--tm-amber);
+}
+
+.tm-output .dim {
+  color: var(--tm-green-dim);
+}
+
+/* ---------- FORM (looks like a CLI prompt block) ---------- */
+
+.tm-form-card {
+  background: var(--tm-bg-hi);
+  border: 1px solid var(--tm-green-dim);
+  margin: 36px 0;
+  padding: 0;
+}
+
+.tm-form-titlebar {
+  background: var(--tm-green-dim);
+  color: var(--tm-bg);
+  padding: 6px 12px;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-weight: 700;
+  display: flex;
+  justify-content: space-between;
+}
+
+.tm-form-body {
+  padding: 24px;
+}
+
+.tm-form-body h2 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--tm-green);
+  margin: 0 0 4px;
+}
+
+.tm-form-body .lede {
+  font-size: 12.5px;
+  color: var(--tm-green-dim);
+  margin: 0 0 22px;
+}
+
+.tm-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.tm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tm-field .prompt-line {
+  font-size: 12.5px;
+  color: var(--tm-amber);
+  letter-spacing: 0.3px;
+}
+
+.tm-field .prompt-line .arg {
+  color: var(--tm-green-dim);
+}
+
+.tm-field .input-line {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.tm-field .gt {
+  color: var(--tm-green);
+  font-weight: 700;
+  user-select: none;
+}
+
+.tm-field input {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  padding: 6px 4px;
+  font-family: var(--font-mono), monospace;
+  font-size: 14px;
+  color: var(--tm-green);
+  border-bottom: 1px solid var(--tm-green-dim);
+  caret-color: var(--tm-green);
+  transition: border-color 120ms ease;
+}
+
+.tm-field input::placeholder {
+  color: rgba(26, 122, 60, 0.6);
+}
+
+.tm-field input:focus {
+  outline: none;
+  border-color: var(--tm-green);
+}
+
+.tm-field input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tm-cta {
+  background: var(--tm-green);
+  color: var(--tm-bg);
+  border: 0;
+  padding: 12px 18px;
+  font-family: var(--font-mono), monospace;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: filter 160ms ease, box-shadow 160ms ease;
+}
+
+.tm-cta:hover:not(:disabled),
+.tm-cta:focus-visible:not(:disabled) {
+  outline: none;
+  filter: brightness(1.15);
+  box-shadow: 0 0 24px rgba(51, 255, 122, 0.5);
+}
+
+.tm-cta:disabled {
+  background: var(--tm-green-dim);
+  color: var(--tm-bg-hi);
+  cursor: not-allowed;
+}
+
+.tm-form-meta {
+  font-size: 12px;
+  color: var(--tm-green-dim);
+  margin-top: 14px;
+}
+
+.tm-form-meta.error {
+  color: var(--tm-red);
+}
+
+.tm-form-meta.success {
+  color: var(--tm-amber);
+}
+
+/* ---------- OUTPUT LIST ---------- */
+
+.tm-section {
+  padding: 32px 0;
+}
+
+.tm-section h2.section-head {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--tm-amber);
+  margin: 0 0 14px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.tm-output-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--tm-green);
+}
+
+@media (min-width: 600px) {
+  .tm-output-list {
+    grid-template-columns: 1fr 1fr;
+    column-gap: 32px;
+  }
+}
+
+.tm-output-list .line {
+  padding: 6px 0;
+  border-bottom: 1px dashed rgba(26, 122, 60, 0.4);
+}
+
+.tm-output-list .line .idx {
+  color: var(--tm-green-dim);
+  margin-right: 10px;
+}
+
+.tm-output-list .line .ok {
+  color: var(--tm-amber);
+  margin-right: 8px;
+}
+
+/* ---------- FOOTER ---------- */
+
+.tm-footer {
+  border-top: 1px solid var(--tm-green-dim);
+  padding: 18px 24px 32px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 11.5px;
+  color: var(--tm-green-dim);
+  position: relative;
+  z-index: 1;
+}
+
+.tm-footer a {
+  color: var(--tm-amber);
+  text-decoration: none;
+}
+
+.tm-footer a:hover {
+  text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tm-headline .cursor,
+  .tm-topbar .blink {
+    animation: none;
+    opacity: 1;
+  }
+  .tm-cta {
+    transition: none !important;
+  }
+}
