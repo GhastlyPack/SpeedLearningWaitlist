@@ -1,0 +1,450 @@
+/* Glassmorphism lander — /v/glass
+ *
+ * Soft gradient-mesh background, frosted glass surfaces layered on top.
+ * Modern SaaS polish. Form lives in the central glass hero panel above
+ * the fold.
+ *
+ * Visual rules:
+ *   - Light lavender base (#f5f3ff), 3 large blurred color blobs as the
+ *     mesh (indigo, emerald, pink)
+ *   - Glass surfaces: rgba(255,255,255,0.55) + backdrop-filter blur(24px)
+ *     + 1px solid rgba(white,0.5) inner-glow border
+ *   - Indigo deep ink for text, emerald CTA
+ *   - 16-20px border-radius for soft modern feel
+ *   - Subtle shadow underneath each glass surface for floated z-depth
+ *
+ * Scoped via .gl-* class prefix.
+ */
+
+.gl-page {
+  --gl-bg: #f5f3ff;
+  --gl-ink: #1e1b4b;
+  --gl-ink-mute: #4c4870;
+  --gl-indigo: #6366f1;
+  --gl-emerald: #059669;
+  --gl-emerald-hover: #047857;
+  --gl-pink: #ec4899;
+  --gl-glass-bg: rgba(255, 255, 255, 0.55);
+  --gl-glass-border: rgba(255, 255, 255, 0.5);
+  --gl-glass-shadow: 0 10px 40px rgba(67, 56, 202, 0.12),
+    0 2px 8px rgba(67, 56, 202, 0.06);
+
+  background: var(--gl-bg);
+  color: var(--gl-ink);
+  min-height: 100vh;
+  min-height: 100svh;
+  font-family: var(--font-plex), system-ui, sans-serif;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* The mesh — fixed-position blurred color blobs behind everything */
+
+.gl-mesh {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.gl-mesh .blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.7;
+}
+
+.gl-mesh .blob.b1 {
+  width: 50vw;
+  height: 50vw;
+  background: var(--gl-indigo);
+  top: -10vw;
+  left: -10vw;
+}
+
+.gl-mesh .blob.b2 {
+  width: 45vw;
+  height: 45vw;
+  background: var(--gl-emerald);
+  bottom: -15vw;
+  right: -10vw;
+  opacity: 0.5;
+}
+
+.gl-mesh .blob.b3 {
+  width: 35vw;
+  height: 35vw;
+  background: var(--gl-pink);
+  top: 35%;
+  right: 20%;
+  opacity: 0.45;
+}
+
+/* Everything else stays above the mesh */
+
+.gl-page > main,
+.gl-page > header,
+.gl-page > footer {
+  position: relative;
+  z-index: 1;
+}
+
+.gl-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* ---------- TOPBAR ---------- */
+
+.gl-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 22px 32px;
+}
+
+.gl-topbar .wordmark {
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -0.4px;
+  color: var(--gl-ink);
+}
+
+.gl-topbar .pill {
+  background: var(--gl-glass-bg);
+  border: 1px solid var(--gl-glass-border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gl-ink-mute);
+}
+
+.gl-topbar .pill .dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gl-emerald);
+  margin-right: 6px;
+  vertical-align: middle;
+  box-shadow: 0 0 8px var(--gl-emerald);
+}
+
+/* ---------- HERO ---------- */
+
+.gl-hero {
+  padding: 48px 24px 96px;
+  text-align: center;
+}
+
+.gl-eyebrow {
+  display: inline-block;
+  background: var(--gl-glass-bg);
+  border: 1px solid var(--gl-glass-border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  color: var(--gl-indigo);
+  margin-bottom: 24px;
+}
+
+.gl-headline {
+  font-size: clamp(40px, 7vw, 72px);
+  font-weight: 700;
+  letter-spacing: -2px;
+  line-height: 1.05;
+  margin: 0 auto 20px;
+  max-width: 14ch;
+  color: var(--gl-ink);
+}
+
+.gl-headline .accent {
+  background: linear-gradient(
+    135deg,
+    var(--gl-indigo) 0%,
+    var(--gl-pink) 60%,
+    var(--gl-emerald) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.gl-subhead {
+  font-size: clamp(16px, 1.6vw, 19px);
+  line-height: 1.5;
+  color: var(--gl-ink-mute);
+  max-width: 50ch;
+  margin: 0 auto 44px;
+}
+
+/* The big central glass card holds the form */
+
+.gl-card {
+  background: var(--gl-glass-bg);
+  border: 1px solid var(--gl-glass-border);
+  border-radius: 24px;
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow: var(--gl-glass-shadow);
+  padding: 32px;
+  text-align: left;
+}
+
+.gl-form-card {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.gl-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.gl-field label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--gl-ink);
+  margin-bottom: 6px;
+}
+
+.gl-field input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 12px;
+  padding: 13px 14px;
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--gl-ink);
+  transition: border-color 180ms ease, background 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.gl-field input::placeholder {
+  color: rgba(76, 72, 112, 0.4);
+}
+
+.gl-field input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.95);
+  border-color: var(--gl-indigo);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+}
+
+.gl-field input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.gl-cta {
+  background: var(--gl-emerald);
+  color: #fff;
+  border: 0;
+  border-radius: 12px;
+  padding: 15px 22px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 180ms ease, transform 180ms ease,
+    box-shadow 180ms ease;
+  margin-top: 4px;
+  box-shadow: 0 6px 20px rgba(5, 150, 105, 0.3);
+}
+
+.gl-cta:hover:not(:disabled),
+.gl-cta:focus-visible:not(:disabled) {
+  outline: none;
+  background: var(--gl-emerald-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(5, 150, 105, 0.4);
+}
+
+.gl-cta:disabled {
+  background: rgba(99, 102, 241, 0.3);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.gl-form-meta {
+  font-size: 12.5px;
+  color: var(--gl-ink-mute);
+  margin-top: 14px;
+  text-align: center;
+}
+
+.gl-form-meta.error {
+  color: var(--gl-pink);
+  font-weight: 500;
+}
+
+.gl-form-meta.success {
+  color: var(--gl-emerald);
+  font-weight: 500;
+}
+
+/* ---------- "HOW IT WORKS" 3-card row ---------- */
+
+.gl-section {
+  padding: 48px 24px;
+}
+
+.gl-section-head {
+  text-align: center;
+  margin-bottom: 36px;
+}
+
+.gl-section-head .kicker {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gl-indigo);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.gl-section-head h2 {
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 700;
+  letter-spacing: -1px;
+  line-height: 1.1;
+  margin: 0 auto;
+  max-width: 22ch;
+  color: var(--gl-ink);
+}
+
+.gl-three-up {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+
+@media (min-width: 720px) {
+  .gl-three-up {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.gl-step {
+  background: var(--gl-glass-bg);
+  border: 1px solid var(--gl-glass-border);
+  border-radius: 20px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: var(--gl-glass-shadow);
+  padding: 26px;
+}
+
+.gl-step .n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gl-indigo), var(--gl-pink));
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+.gl-step h3 {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  margin: 0 0 8px;
+}
+
+.gl-step p {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--gl-ink-mute);
+  margin: 0;
+}
+
+/* ---------- OUTPUT GRID ---------- */
+
+.gl-output-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+@media (min-width: 720px) {
+  .gl-output-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+.gl-output-tile {
+  background: var(--gl-glass-bg);
+  border: 1px solid var(--gl-glass-border);
+  border-radius: 14px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 18px 14px;
+  text-align: center;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--gl-ink);
+  box-shadow: 0 4px 16px rgba(67, 56, 202, 0.06);
+}
+
+/* ---------- BIG REPEAT CTA ---------- */
+
+.gl-repeat-cta {
+  padding: 64px 24px 96px;
+  text-align: center;
+}
+
+.gl-repeat-cta .gl-card {
+  text-align: left;
+}
+
+/* ---------- FOOTER ---------- */
+
+.gl-footer {
+  padding: 28px 32px 36px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12.5px;
+  color: var(--gl-ink-mute);
+}
+
+.gl-footer a {
+  color: var(--gl-indigo);
+  text-decoration: none;
+}
+
+.gl-footer a:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .gl-field input,
+  .gl-cta {
+    transition: none !important;
+  }
+  .gl-cta:hover:not(:disabled),
+  .gl-cta:focus-visible:not(:disabled) {
+    transform: none;
+  }
+}
