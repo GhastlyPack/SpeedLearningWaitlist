@@ -1,0 +1,432 @@
+/* Vibrant Block-based lander — /v/blocks
+ *
+ * Flat geometric blocks of saturated color, asymmetric layout, no
+ * shadows or gradients. The layout IS the decoration. Different from
+ * Bento (soft pastels in subtle equal tiles) — here blocks are big,
+ * saturated, asymmetric, and some bleed to the page edges.
+ *
+ * Visual rules:
+ *   - Saturated palette: coral red, electric blue, citrus yellow,
+ *     mint green, soft cream
+ *   - No border-radius, no shadows, no gradients — flat planes only
+ *   - Big chunky display sans (IBM Plex Sans 700-800)
+ *   - Mono labels in caps for chrome
+ *   - Two-color combinations per block (bg + text), high contrast
+ *
+ * Scoped via .bl-* class prefix.
+ */
+
+.bl-page {
+  --bl-cream: #f6f1e3;
+  --bl-coral: #ff5341;
+  --bl-blue: #2356f6;
+  --bl-yellow: #ffd23f;
+  --bl-mint: #43c97f;
+  --bl-ink: #11140f;
+  --bl-paper: #fdfbf3;
+
+  background: var(--bl-cream);
+  color: var(--bl-ink);
+  font-family: var(--font-plex), system-ui, sans-serif;
+  min-height: 100vh;
+  min-height: 100svh;
+}
+
+.bl-page * {
+  border-radius: 0 !important;
+}
+
+.bl-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.bl-pad {
+  padding: 32px;
+}
+
+/* ---------- TOPBAR ---------- */
+
+.bl-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 22px 32px;
+  background: var(--bl-ink);
+  color: var(--bl-cream);
+}
+
+.bl-topbar .wordmark {
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.4px;
+}
+
+.bl-topbar .meta {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+/* ---------- HERO (split blocks) ---------- */
+
+.bl-hero {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 880px) {
+  .bl-hero {
+    grid-template-columns: 1.3fr 1fr;
+  }
+}
+
+.bl-hero-left {
+  background: var(--bl-coral);
+  color: var(--bl-paper);
+  padding: 80px 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.bl-hero-right {
+  background: var(--bl-yellow);
+  color: var(--bl-ink);
+  padding: 80px 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.bl-eyebrow {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 28px;
+  opacity: 0.95;
+}
+
+.bl-headline {
+  font-size: clamp(40px, 6vw, 72px);
+  font-weight: 800;
+  letter-spacing: -2px;
+  line-height: 1.02;
+  margin: 0 0 24px;
+  text-transform: uppercase;
+}
+
+.bl-headline .nl {
+  display: block;
+}
+
+.bl-subhead {
+  font-size: clamp(16px, 1.6vw, 19px);
+  line-height: 1.45;
+  max-width: 36ch;
+  margin: 0 0 28px;
+  font-weight: 500;
+}
+
+.bl-meta-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.bl-meta-bar span {
+  background: var(--bl-ink);
+  color: var(--bl-paper);
+  padding: 6px 12px;
+}
+
+/* ---------- FORM (in the yellow block) ---------- */
+
+.bl-form-card {
+  background: var(--bl-ink);
+  color: var(--bl-cream);
+  padding: 32px;
+  max-width: 460px;
+}
+
+.bl-form-card h2 {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin: 0 0 6px;
+  text-transform: uppercase;
+}
+
+.bl-form-card .lede {
+  font-family: var(--font-mono), monospace;
+  font-size: 11.5px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--bl-yellow);
+  margin: 0 0 22px;
+}
+
+.bl-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.bl-field label {
+  display: block;
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--bl-cream);
+  margin-bottom: 6px;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.bl-field input {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid var(--bl-cream);
+  padding: 10px 0;
+  font-family: var(--font-plex), sans-serif;
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--bl-cream);
+  transition: border-color 180ms ease;
+}
+
+.bl-field input::placeholder {
+  color: rgba(246, 241, 227, 0.4);
+}
+
+.bl-field input:focus {
+  outline: none;
+  border-bottom-color: var(--bl-yellow);
+}
+
+.bl-field input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bl-cta {
+  background: var(--bl-yellow);
+  color: var(--bl-ink);
+  border: 0;
+  padding: 16px 22px;
+  font-family: var(--font-plex), sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+  margin-top: 8px;
+}
+
+.bl-cta:hover:not(:disabled),
+.bl-cta:focus-visible:not(:disabled) {
+  outline: none;
+  background: var(--bl-coral);
+  color: var(--bl-paper);
+}
+
+.bl-cta:disabled {
+  background: #4a4a4a;
+  color: #888;
+  cursor: not-allowed;
+}
+
+.bl-form-meta {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  color: var(--bl-cream);
+  opacity: 0.7;
+  margin-top: 14px;
+}
+
+.bl-form-meta.error {
+  color: var(--bl-yellow);
+  opacity: 1;
+}
+
+.bl-form-meta.success {
+  color: var(--bl-mint);
+  opacity: 1;
+}
+
+/* ---------- OUTPUT GRID (full-bleed blocks) ---------- */
+
+.bl-output-section {
+  background: var(--bl-paper);
+}
+
+.bl-output-section .header {
+  padding: 64px 40px 32px;
+  max-width: 800px;
+}
+
+.bl-output-section .kicker {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--bl-coral);
+  margin-bottom: 14px;
+}
+
+.bl-output-section h2 {
+  font-size: clamp(32px, 5vw, 54px);
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  line-height: 1.05;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.bl-output-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  background: var(--bl-ink);
+  padding: 4px;
+}
+
+@media (min-width: 720px) {
+  .bl-output-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+.bl-output-block {
+  padding: 32px 20px;
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.bl-output-block .n {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  letter-spacing: 1px;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.bl-output-block .name {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  text-transform: uppercase;
+  line-height: 1.05;
+  margin-top: 10px;
+}
+
+.bl-output-block:nth-child(5n + 1) {
+  background: var(--bl-coral);
+  color: var(--bl-paper);
+}
+
+.bl-output-block:nth-child(5n + 2) {
+  background: var(--bl-yellow);
+  color: var(--bl-ink);
+}
+
+.bl-output-block:nth-child(5n + 3) {
+  background: var(--bl-blue);
+  color: var(--bl-paper);
+}
+
+.bl-output-block:nth-child(5n + 4) {
+  background: var(--bl-mint);
+  color: var(--bl-ink);
+}
+
+.bl-output-block:nth-child(5n + 5) {
+  background: var(--bl-paper);
+  color: var(--bl-ink);
+}
+
+/* ---------- REPEAT CTA (big blue block) ---------- */
+
+.bl-repeat {
+  background: var(--bl-blue);
+  color: var(--bl-paper);
+  padding: 80px 40px;
+}
+
+.bl-repeat .inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+  align-items: center;
+}
+
+@media (min-width: 880px) {
+  .bl-repeat .inner {
+    grid-template-columns: 1.3fr 1fr;
+    gap: 56px;
+  }
+}
+
+.bl-repeat .kicker {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 14px;
+  color: var(--bl-yellow);
+}
+
+.bl-repeat h2 {
+  font-size: clamp(36px, 5vw, 60px);
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  line-height: 1.05;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+/* ---------- FOOTER ---------- */
+
+.bl-footer {
+  background: var(--bl-ink);
+  color: var(--bl-cream);
+  padding: 28px 32px 40px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.bl-footer a {
+  color: var(--bl-yellow);
+  text-decoration: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bl-field input,
+  .bl-cta {
+    transition: none !important;
+  }
+}
