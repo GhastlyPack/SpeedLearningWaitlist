@@ -1,0 +1,429 @@
+/* Bento Grid lander — /v/bento
+ *
+ * Apple-style asymmetric grid of rounded tiles, each pitching one
+ * benefit or output. Form lives in the largest hero tile. Mixed sizes
+ * give visual rhythm; mixed light/dark tiles create depth without
+ * shadow trickery.
+ *
+ * Visual rules:
+ *   - Off-white canvas (#fafaf9), soft contrast tiles
+ *   - Tile palette mixes: cream, pale mint, pale lavender, deep
+ *     graphite for accent tiles
+ *   - 24px border-radius on every tile; no borders, no shadows —
+ *     contrast comes from background colors alone
+ *   - One accent color (electric blue #2563eb) used sparingly on
+ *     the CTA + a "marquee" benefit number
+ *   - Big chunky display sans (IBM Plex Sans 700) for tile headlines
+ *
+ * Scoped via .bn-* class prefix.
+ */
+
+.bn-page {
+  --bn-canvas: #fafaf9;
+  --bn-ink: #0f0f10;
+  --bn-ink-mute: #5e5e62;
+  --bn-tile-cream: #f0ebe1;
+  --bn-tile-mint: #d8ece2;
+  --bn-tile-lavender: #e4dff5;
+  --bn-tile-rose: #f4dee5;
+  --bn-tile-graphite: #18181b;
+  --bn-tile-electric: #2563eb;
+  --bn-tile-amber: #fde68a;
+  --bn-paper: #ffffff;
+  --bn-accent: #2563eb;
+  --bn-accent-hi: #1d4ed8;
+
+  background: var(--bn-canvas);
+  color: var(--bn-ink);
+  font-family: var(--font-plex), system-ui, sans-serif;
+  min-height: 100vh;
+  min-height: 100svh;
+}
+
+.bn-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* ---------- TOPBAR ---------- */
+
+.bn-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 22px 32px;
+}
+
+.bn-topbar .wordmark {
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -0.4px;
+}
+
+.bn-topbar .meta {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--bn-ink-mute);
+}
+
+/* ---------- HERO HEADER ---------- */
+
+.bn-hero-head {
+  padding: 32px 24px 24px;
+  text-align: center;
+}
+
+.bn-eyebrow {
+  display: inline-block;
+  background: var(--bn-tile-electric);
+  color: #fff;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+
+.bn-page h1.bn-hero-headline {
+  font-size: clamp(36px, 5.5vw, 60px);
+  font-weight: 700;
+  letter-spacing: -1.5px;
+  line-height: 1.05;
+  margin: 0 auto 12px;
+  max-width: 22ch;
+}
+
+.bn-page h1.bn-hero-headline .accent {
+  color: var(--bn-tile-electric);
+}
+
+.bn-hero-sub {
+  font-size: clamp(15px, 1.4vw, 17px);
+  line-height: 1.5;
+  color: var(--bn-ink-mute);
+  max-width: 50ch;
+  margin: 0 auto;
+}
+
+/* ---------- BENTO GRID ---------- */
+
+.bn-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  padding: 24px;
+}
+
+@media (min-width: 720px) {
+  .bn-grid {
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: minmax(140px, auto);
+  }
+}
+
+.bn-tile {
+  background: var(--bn-paper);
+  border-radius: 24px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  min-height: 160px;
+}
+
+/* The form tile spans the most space — center-stage above the fold */
+
+.bn-tile.form-tile {
+  grid-column: 1 / -1;
+  background: var(--bn-tile-cream);
+}
+
+@media (min-width: 720px) {
+  .bn-tile.form-tile {
+    grid-column: span 2;
+    grid-row: span 2;
+  }
+}
+
+.bn-tile.wide {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 720px) {
+  .bn-tile.wide {
+    grid-column: span 2;
+  }
+  .bn-tile.tall {
+    grid-row: span 2;
+  }
+}
+
+.bn-tile.cream {
+  background: var(--bn-tile-cream);
+}
+
+.bn-tile.mint {
+  background: var(--bn-tile-mint);
+}
+
+.bn-tile.lavender {
+  background: var(--bn-tile-lavender);
+}
+
+.bn-tile.rose {
+  background: var(--bn-tile-rose);
+}
+
+.bn-tile.amber {
+  background: var(--bn-tile-amber);
+}
+
+.bn-tile.graphite {
+  background: var(--bn-tile-graphite);
+  color: #fafafa;
+}
+
+.bn-tile.electric {
+  background: var(--bn-tile-electric);
+  color: #fff;
+}
+
+.bn-tile .label {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  font-weight: 600;
+  opacity: 0.7;
+  margin-bottom: 10px;
+}
+
+.bn-tile h3 {
+  font-size: clamp(20px, 2vw, 26px);
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  line-height: 1.15;
+  margin: 0 0 10px;
+}
+
+.bn-tile p {
+  font-size: 14.5px;
+  line-height: 1.5;
+  margin: 0;
+  opacity: 0.85;
+}
+
+/* Tile types */
+
+.bn-tile.metric {
+  justify-content: flex-end;
+}
+
+.bn-tile.metric .big {
+  font-size: clamp(48px, 6vw, 72px);
+  font-weight: 700;
+  letter-spacing: -2.5px;
+  line-height: 0.95;
+  margin-bottom: 6px;
+}
+
+.bn-tile.metric .desc {
+  font-size: 14px;
+  line-height: 1.4;
+  opacity: 0.85;
+}
+
+/* List tile */
+
+.bn-tile.list ul {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 14px;
+}
+
+.bn-tile.list li {
+  font-family: var(--font-mono), monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.3px;
+  padding-left: 14px;
+  position: relative;
+}
+
+.bn-tile.list li::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  opacity: 0.5;
+}
+
+/* ---------- FORM (inside the cream form tile) ---------- */
+
+.bn-form-card-inner h2 {
+  font-size: clamp(28px, 3.5vw, 38px);
+  font-weight: 700;
+  letter-spacing: -1px;
+  line-height: 1.1;
+  margin: 0 0 8px;
+}
+
+.bn-form-card-inner h2 .accent {
+  color: var(--bn-tile-electric);
+}
+
+.bn-form-card-inner .lede {
+  font-size: 14px;
+  color: var(--bn-ink-mute);
+  margin: 0 0 22px;
+}
+
+.bn-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bn-field label {
+  display: block;
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--bn-ink-mute);
+  margin-bottom: 5px;
+}
+
+.bn-field input {
+  width: 100%;
+  background: var(--bn-paper);
+  border: 1px solid #e0dcd1;
+  border-radius: 12px;
+  padding: 13px 14px;
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--bn-ink);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.bn-field input::placeholder {
+  color: #b5b0a3;
+}
+
+.bn-field input:focus {
+  outline: none;
+  border-color: var(--bn-tile-electric);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+}
+
+.bn-field input:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.bn-cta {
+  background: var(--bn-tile-electric);
+  color: #fff;
+  border: 0;
+  border-radius: 12px;
+  padding: 14px 20px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 180ms ease, transform 180ms ease;
+  margin-top: 4px;
+}
+
+.bn-cta:hover:not(:disabled),
+.bn-cta:focus-visible:not(:disabled) {
+  outline: none;
+  background: var(--bn-accent-hi);
+  transform: translateY(-1px);
+}
+
+.bn-cta:disabled {
+  background: #b8bcc7;
+  cursor: not-allowed;
+}
+
+.bn-form-meta {
+  font-size: 12.5px;
+  color: var(--bn-ink-mute);
+  margin-top: 12px;
+}
+
+.bn-form-meta.error {
+  color: #b91c1c;
+  font-weight: 500;
+}
+
+.bn-form-meta.success {
+  color: var(--bn-tile-electric);
+  font-weight: 500;
+}
+
+/* ---------- REPEAT CTA ROW ---------- */
+
+.bn-repeat {
+  padding: 56px 24px 80px;
+  text-align: center;
+}
+
+.bn-repeat h2 {
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 700;
+  letter-spacing: -1px;
+  line-height: 1.1;
+  margin: 0 auto 24px;
+  max-width: 24ch;
+}
+
+.bn-repeat .form-host {
+  max-width: 480px;
+  margin: 0 auto;
+  background: var(--bn-tile-cream);
+  border-radius: 24px;
+  padding: 28px;
+  text-align: left;
+}
+
+/* ---------- FOOTER ---------- */
+
+.bn-footer {
+  padding: 28px 32px 40px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--bn-ink-mute);
+}
+
+.bn-footer a {
+  color: var(--bn-tile-electric);
+  text-decoration: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bn-cta,
+  .bn-field input {
+    transition: none !important;
+  }
+  .bn-cta:hover:not(:disabled),
+  .bn-cta:focus-visible:not(:disabled) {
+    transform: none;
+  }
+}
