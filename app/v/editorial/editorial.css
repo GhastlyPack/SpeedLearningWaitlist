@@ -1,0 +1,476 @@
+/* Editorial Magazine lander — /v/editorial
+ *
+ * Reads like a long-form essay in a publication. The form is integrated
+ * into the article flow rather than featured above the fold — testing
+ * "earn the click via reading" vs the control's "form-first" pattern.
+ *
+ * Visual rules:
+ *   - Cream paper bg, near-black ink, no gradients
+ *   - Serif (Newsreader) for headlines + body article text
+ *   - Sans (IBM Plex Sans) for chrome, labels, byline metadata
+ *   - Mono (JetBrains Mono) for dateline + section markers
+ *   - Hairline rules (1px black), generous whitespace
+ *   - Multi-column body on desktop, single column on mobile
+ *   - Drop cap on opening paragraph
+ *   - Pull quotes set in larger serif, italic where it helps cadence
+ *
+ * Scoped via .ed-* class prefix to avoid colliding with globals.css.
+ */
+
+.ed-page {
+  --ed-paper: #f5f1e8;
+  --ed-ink: #1a1816;
+  --ed-ink-mute: #5a544c;
+  --ed-rule: #1a1816;
+  --ed-accent: #8b2c2c;
+  --ed-accent-soft: #c4a89a;
+  --ed-serif: var(--font-editorial, var(--font-serif, Newsreader)), Georgia,
+    "Times New Roman", serif;
+  --ed-sans: var(--font-plex), ui-sans-serif, system-ui, sans-serif;
+  --ed-mono: var(--font-mono), ui-monospace, monospace;
+
+  background: var(--ed-paper);
+  color: var(--ed-ink);
+  font-family: var(--ed-serif);
+  min-height: 100vh;
+  min-height: 100svh;
+}
+
+.ed-container {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.ed-container--wide {
+  max-width: 1100px;
+}
+
+/* ---------- MASTHEAD ---------- */
+
+.ed-masthead {
+  padding: 24px 24px 12px;
+  border-bottom: 1px solid var(--ed-rule);
+  text-align: center;
+}
+
+.ed-masthead .wordmark {
+  font-family: var(--ed-serif);
+  font-weight: 700;
+  font-size: clamp(28px, 4vw, 36px);
+  letter-spacing: -0.5px;
+  text-transform: uppercase;
+}
+
+.ed-masthead .issue {
+  font-family: var(--ed-mono);
+  font-size: 10.5px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ed-ink-mute);
+  margin-top: 8px;
+}
+
+.ed-masthead .tagline {
+  font-family: var(--ed-serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ed-ink-mute);
+  margin-top: 6px;
+}
+
+/* ---------- ARTICLE HEAD ---------- */
+
+.ed-article-head {
+  padding: 64px 0 32px;
+  text-align: center;
+}
+
+.ed-kicker {
+  font-family: var(--ed-mono);
+  font-size: 11px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--ed-accent);
+  font-weight: 700;
+  margin-bottom: 18px;
+}
+
+.ed-headline {
+  font-family: var(--ed-serif);
+  font-size: clamp(40px, 7vw, 72px);
+  font-weight: 600;
+  line-height: 1.02;
+  letter-spacing: -1.5px;
+  margin: 0 0 22px;
+}
+
+.ed-headline em {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--ed-accent);
+}
+
+.ed-standfirst {
+  font-family: var(--ed-serif);
+  font-size: clamp(18px, 2vw, 22px);
+  line-height: 1.4;
+  color: var(--ed-ink-mute);
+  font-style: italic;
+  max-width: 36ch;
+  margin: 0 auto 28px;
+}
+
+.ed-byline {
+  font-family: var(--ed-mono);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ed-ink-mute);
+}
+
+.ed-byline .dot {
+  margin: 0 8px;
+  color: var(--ed-accent-soft);
+}
+
+/* ---------- LEAD ART ---------- */
+
+.ed-lead-art {
+  margin: 32px 0;
+}
+
+.ed-lead-art .block {
+  height: 280px;
+  background: linear-gradient(
+      135deg,
+      var(--ed-ink) 0 50%,
+      var(--ed-accent) 50% 100%
+    );
+  position: relative;
+  overflow: hidden;
+}
+
+.ed-lead-art .block::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(255, 255, 255, 0.08) 0,
+    transparent 50%
+  );
+}
+
+.ed-lead-art .caption {
+  font-family: var(--ed-sans);
+  font-size: 12.5px;
+  color: var(--ed-ink-mute);
+  text-align: center;
+  margin-top: 10px;
+  padding: 0 12px;
+  font-style: italic;
+}
+
+/* ---------- BODY ---------- */
+
+.ed-body {
+  padding: 24px 0;
+  font-family: var(--ed-serif);
+  font-size: 18px;
+  line-height: 1.7;
+  color: var(--ed-ink);
+}
+
+.ed-body p {
+  margin: 0 0 1.2em;
+}
+
+.ed-body p.drop::first-letter {
+  font-family: var(--ed-serif);
+  font-weight: 700;
+  font-size: 5.4em;
+  line-height: 0.85;
+  float: left;
+  margin: 0.04em 0.1em 0 0;
+  color: var(--ed-accent);
+}
+
+@media (min-width: 880px) {
+  .ed-body--cols {
+    column-count: 2;
+    column-gap: 36px;
+  }
+
+  .ed-body--cols .ed-pullquote,
+  .ed-body--cols .ed-subhead,
+  .ed-body--cols .ed-outputs {
+    column-span: all;
+  }
+}
+
+.ed-subhead {
+  font-family: var(--ed-serif);
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: -0.5px;
+  margin: 36px 0 16px;
+  line-height: 1.2;
+}
+
+/* Pull quote */
+
+.ed-pullquote {
+  margin: 28px 0;
+  padding: 22px 0;
+  border-top: 1px solid var(--ed-rule);
+  border-bottom: 1px solid var(--ed-rule);
+  font-family: var(--ed-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(22px, 3vw, 28px);
+  line-height: 1.25;
+  color: var(--ed-ink);
+  text-align: center;
+}
+
+.ed-pullquote::before,
+.ed-pullquote::after {
+  display: block;
+  font-family: var(--ed-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--ed-accent);
+  margin: 0 0 6px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.ed-pullquote::before {
+  content: "/ pull quote";
+}
+
+/* Numbered output list — set inline inside the article body */
+
+.ed-outputs {
+  margin: 24px 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+@media (min-width: 720px) {
+  .ed-outputs {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.ed-outputs .row {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 14px;
+  align-items: baseline;
+  padding: 12px 0;
+  border-top: 1px solid var(--ed-rule);
+}
+
+.ed-outputs .row .n {
+  font-family: var(--ed-mono);
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  color: var(--ed-accent);
+  font-weight: 700;
+}
+
+.ed-outputs .row .name {
+  font-family: var(--ed-serif);
+  font-size: 18px;
+}
+
+/* ---------- INTEGRATED SUBSCRIBE BLOCK ---------- */
+
+.ed-subscribe {
+  margin: 48px 0;
+  padding: 32px;
+  background: var(--ed-paper);
+  border: 1px solid var(--ed-rule);
+  position: relative;
+}
+
+.ed-subscribe .corner {
+  position: absolute;
+  top: -10px;
+  left: 24px;
+  background: var(--ed-paper);
+  padding: 0 10px;
+  font-family: var(--ed-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--ed-accent);
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.ed-subscribe h2 {
+  font-family: var(--ed-serif);
+  font-size: clamp(24px, 3vw, 30px);
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+  margin: 0 0 8px;
+}
+
+.ed-subscribe .desc {
+  font-family: var(--ed-serif);
+  font-size: 16px;
+  color: var(--ed-ink-mute);
+  font-style: italic;
+  margin: 0 0 20px;
+}
+
+.ed-form {
+  display: grid;
+  gap: 12px;
+}
+
+@media (min-width: 720px) {
+  .ed-form {
+    grid-template-columns: 1fr 1fr 2fr auto;
+    gap: 10px;
+    align-items: end;
+  }
+}
+
+.ed-field label {
+  display: block;
+  font-family: var(--ed-mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ed-ink-mute);
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+.ed-field input {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--ed-rule);
+  background: transparent;
+  padding: 8px 0;
+  font-family: var(--ed-serif);
+  font-size: 17px;
+  color: var(--ed-ink);
+  transition: border-color 180ms ease;
+}
+
+.ed-field input::placeholder {
+  color: var(--ed-accent-soft);
+}
+
+.ed-field input:focus {
+  outline: none;
+  border-bottom-color: var(--ed-accent);
+}
+
+.ed-field input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ed-cta {
+  background: var(--ed-ink);
+  color: var(--ed-paper);
+  border: 0;
+  padding: 14px 22px;
+  font-family: var(--ed-mono);
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 180ms ease;
+  white-space: nowrap;
+}
+
+.ed-cta:hover:not(:disabled),
+.ed-cta:focus-visible:not(:disabled) {
+  background: var(--ed-accent);
+  outline: none;
+}
+
+.ed-cta:disabled {
+  background: var(--ed-ink-mute);
+  cursor: not-allowed;
+}
+
+.ed-form-meta {
+  margin-top: 14px;
+  font-family: var(--ed-mono);
+  font-size: 11px;
+  letter-spacing: 0.8px;
+  color: var(--ed-ink-mute);
+  text-transform: uppercase;
+}
+
+.ed-form-meta.error {
+  color: var(--ed-accent);
+  text-transform: none;
+  font-family: var(--ed-serif);
+  font-style: italic;
+  font-size: 14px;
+  letter-spacing: 0;
+}
+
+.ed-form-meta.success {
+  color: var(--ed-ink);
+  text-transform: none;
+  font-family: var(--ed-serif);
+  font-style: italic;
+  font-size: 14px;
+  letter-spacing: 0;
+}
+
+/* ---------- CLOSING ---------- */
+
+.ed-signature {
+  font-family: var(--ed-serif);
+  font-style: italic;
+  font-size: 17px;
+  color: var(--ed-ink-mute);
+  margin: 32px 0 16px;
+  text-align: center;
+}
+
+/* ---------- COLOPHON ---------- */
+
+.ed-colophon {
+  border-top: 1px solid var(--ed-rule);
+  margin-top: 64px;
+  padding: 28px 24px 40px;
+  text-align: center;
+  font-family: var(--ed-mono);
+  font-size: 10.5px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ed-ink-mute);
+}
+
+.ed-colophon .line + .line {
+  margin-top: 6px;
+}
+
+.ed-colophon a {
+  color: var(--ed-accent);
+  text-decoration: none;
+  border-bottom: 1px solid currentColor;
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .ed-field input,
+  .ed-cta {
+    transition: none !important;
+  }
+}
