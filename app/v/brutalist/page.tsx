@@ -82,7 +82,7 @@ function Hero() {
   return (
     <section className="brut-container brut-hero">
       <div>
-        <span className="brut-eyebrow">$50 flat · launches Q3</span>
+        <span className="brut-eyebrow">$50 flat · launches June 2026</span>
         <h1 className="brut-headline">
           TYPE A TOPIC.
           <br />

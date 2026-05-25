@@ -59,7 +59,7 @@ function Hero() {
   return (
     <section className="bl-hero">
       <div className="bl-hero-left">
-        <div className="bl-eyebrow">$50 flat · launches Q3</div>
+        <div className="bl-eyebrow">$50 flat · launches June 2026</div>
         <h1 className="bl-headline">
           <span className="nl">Learn</span>
           <span className="nl">anything.</span>
