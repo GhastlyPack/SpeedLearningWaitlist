@@ -94,6 +94,15 @@ export interface WaitlistPerson {
    *  @bowskyventures.com). Filtered out of dashboard counts; left in CIO
    *  so we can verify the confirmation email flow without polluting metrics. */
   internal?: boolean;
+  /** True if this record came through the fallback path (CIO's
+   *  /attributes endpoint failed even after retry). Such records have
+   *  only the email + cio_id from the search response; the rest is
+   *  placeholder defaults. They still count toward the dashboard total
+   *  but are excluded from the Recent Signups visual list so the table
+   *  doesn't fill up with "—" / "direct" / "3s ago" rows when CIO is
+   *  flaky. The next page load with successful hydration replaces them
+   *  with the real record. */
+  partial?: boolean;
 }
 
 export interface WaitlistSummary {
@@ -287,103 +296,121 @@ export async function searchWaitlistPeople(
  * the dashboard for ~5-15 minutes after submission, which was the
  * symptom Cole reported.
  */
+/**
+ * Inner: actually fetch and parse a customer's attributes. Throws if the
+ * CIO App API returns non-OK. Pulled out of getCustomerByCioId so the
+ * retry loop can call it twice without duplicating the parse logic.
+ */
+async function fetchCustomerAttributes(
+  cioId: string
+): Promise<WaitlistPerson> {
+  const resp = await cioFetch<CustomerAttributesResponse>(
+    `/v1/api/customers/${encodeURIComponent(cioId)}/attributes?id_type=cio_id`
+  );
+  const attrs = resp.customer?.attributes || {};
+  const ts = resp.customer?.timestamps || {};
+
+  // Prefer the ISO string we set ourselves; fall back to the API's
+  // last-modified timestamp of the waitlist_signed_up_at attribute.
+  const signedUpAt =
+    attrString(attrs, "waitlist_signed_up_at") ||
+    fromTimestampSeconds(ts.waitlist_signed_up_at) ||
+    fromTimestampSeconds(ts.first_name); // any signal of identify time
+
+  // CIO stores booleans as the literal strings "true"/"false".
+  const internalRaw = attrString(attrs, "internal");
+  const internal = internalRaw === "true";
+
+  const firstName = attrString(attrs, "first_name");
+  const lastName = attrString(attrs, "last_name");
+  const utmMedium = attrString(attrs, "utm_medium");
+  const fbclidPresent = !!attrString(attrs, "fbclid");
+  const storedTraffic = attrString(attrs, "traffic_type");
+
+  // Resolution order:
+  //   1. Manual name-based override (NAME_TRAFFIC_OVERRIDES above)
+  //   2. Stored CIO attribute (set by /api/cio-track and the backfill)
+  //   3. Computed from utm_medium + fbclid (the original on-the-fly classifier)
+  const trafficType: "paid" | "organic" =
+    nameTrafficOverride(firstName, lastName) ||
+    (storedTraffic === "paid" || storedTraffic === "organic"
+      ? storedTraffic
+      : classifyCioTraffic({ utmMedium, fbclidPresent }));
+
+  const variant = attrString(attrs, "variant") || "control";
+
+  return {
+    cioId,
+    email:
+      resp.customer.identifiers?.email ||
+      attrString(attrs, "email") ||
+      "(unknown)",
+    firstName,
+    lastName,
+    source: attrString(attrs, "waitlist_source"),
+    signedUpAt,
+    utmSource: attrString(attrs, "utm_source"),
+    utmMedium,
+    utmCampaign: attrString(attrs, "utm_campaign"),
+    utmTerm: attrString(attrs, "utm_term"),
+    utmContent: attrString(attrs, "utm_content"),
+    referredBy: attrString(attrs, "referred_by"),
+    fbclidPresent,
+    trafficType,
+    variant,
+    internal,
+  };
+}
+
 export async function getCustomerByCioId(
   cioId: string,
   fallbackEmail?: string
 ): Promise<WaitlistPerson | null> {
-  try {
-    const resp = await cioFetch<CustomerAttributesResponse>(
-      `/v1/api/customers/${encodeURIComponent(cioId)}/attributes?id_type=cio_id`
-    );
-    const attrs = resp.customer?.attributes || {};
-    const ts = resp.customer?.timestamps || {};
+  // Try the attribute fetch up to twice with a short delay. CIO's App API
+  // is observably flaky — a single transient blip would have dropped the
+  // record (or used a noisy placeholder) before this retry was added.
+  // 200ms is short enough to keep dashboard load times reasonable but
+  // long enough to clear most transient failures.
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await fetchCustomerAttributes(cioId);
+    } catch (err) {
+      lastError = err;
+      if (attempt === 0) {
+        await new Promise((r) => setTimeout(r, 200));
+      }
+    }
+  }
 
-    // Prefer the ISO string we set ourselves; fall back to the API's
-    // last-modified timestamp of the waitlist_signed_up_at attribute.
-    const signedUpAt =
-      attrString(attrs, "waitlist_signed_up_at") ||
-      fromTimestampSeconds(ts.waitlist_signed_up_at) ||
-      fromTimestampSeconds(ts.first_name); // any signal of identify time
+  // Both attempts failed. Log for monitoring and decide whether to
+  // return a placeholder (if we have the email from search) or null
+  // (no useful info, drop it).
+  console.warn(
+    `[cio] hydrate failed for ${cioId} after retry: ${
+      lastError instanceof Error ? lastError.message : String(lastError)
+    }${fallbackEmail ? ` — using fallback record for ${fallbackEmail}` : ""}`
+  );
 
-    // CIO stores booleans as the literal strings "true"/"false".
-    const internalRaw = attrString(attrs, "internal");
-    const internal = internalRaw === "true";
+  if (!fallbackEmail) return null;
 
-    const firstName = attrString(attrs, "first_name");
-    const lastName = attrString(attrs, "last_name");
-    const utmMedium = attrString(attrs, "utm_medium");
-    const fbclidPresent = !!attrString(attrs, "fbclid");
-    const storedTraffic = attrString(attrs, "traffic_type");
-
-    // Resolution order:
-    //   1. Manual name-based override (NAME_TRAFFIC_OVERRIDES above)
-    //   2. Stored CIO attribute (set by /api/cio-track and the backfill)
-    //   3. Computed from utm_medium + fbclid (the original on-the-fly classifier)
-    // The override wins so we can correct historical mis-classifications
-    // without needing to round-trip a write to CIO. The stored attribute
-    // wins next so manual edits in CIO's admin UI propagate to the dashboard.
-    const trafficType: "paid" | "organic" =
-      nameTrafficOverride(firstName, lastName) ||
-      (storedTraffic === "paid" || storedTraffic === "organic"
-        ? storedTraffic
-        : classifyCioTraffic({ utmMedium, fbclidPresent }));
-
-    // Variant defaults to "control" for the root lander and for older
-    // records that pre-date variant tracking. The dashboard's Variant
-    // filter treats undefined as "control" so historic data still buckets.
-    const variant = attrString(attrs, "variant") || "control";
-
-    return {
-      cioId,
-      email:
-        resp.customer.identifiers?.email ||
-        attrString(attrs, "email") ||
-        "(unknown)",
-      firstName,
-      lastName,
-      source: attrString(attrs, "waitlist_source"),
-      signedUpAt,
-      utmSource: attrString(attrs, "utm_source"),
-      utmMedium,
-      utmCampaign: attrString(attrs, "utm_campaign"),
-      utmTerm: attrString(attrs, "utm_term"),
-      utmContent: attrString(attrs, "utm_content"),
-      referredBy: attrString(attrs, "referred_by"),
-      fbclidPresent,
-      trafficType,
-      variant,
-      internal,
-    };
-  } catch (err) {
-    // Hydration failed. Most common cause: Track-API → App-API
-    // propagation lag for very recent signups (App-API returns 404 on
-    // /attributes for cio_ids that ARE searchable in /customers).
-    //
-    // Log for visibility, then fall back to a minimal record if we
-    // have the email — better to show the signup with default
-    // metadata than to drop it from the dashboard entirely.
-    console.warn(
-      `[cio] hydrate failed for ${cioId}: ${
-        err instanceof Error ? err.message : String(err)
-      }${fallbackEmail ? ` — using fallback record for ${fallbackEmail}` : ""}`
-    );
-
-    if (!fallbackEmail) return null;
-
+  {
     const internal = isInternalEmail(fallbackEmail);
     return {
       cioId,
       email: fallbackEmail,
-      // First/last name + UTMs come from attributes — unavailable in
-      // the fallback path. Dashboard cells render "—" for these,
-      // which is fine for the brief window before the next load
-      // hydrates fully.
+      // No first/last name or UTMs available in the fallback path.
+      // The dashboard filters partial records out of Recent Signups
+      // (via the .partial flag below) so the "—" rendering doesn't
+      // pollute the visible feed.
       firstName: undefined,
       lastName: undefined,
       source: undefined,
-      // Use "now" as a placeholder so the record appears at the top
-      // of Recent Signups. When attributes propagate, the real
-      // waitlist_signed_up_at replaces this.
+      // signedUpAt stays as "now" so the record still falls within
+      // today's daily bucket (keeps cioSignupsByRange consistent with
+      // cioTotal). The .partial flag below keeps it out of the
+      // Recent Signups visual list so the placeholder timestamp
+      // doesn't bubble fake "3s ago" rows to the top.
       signedUpAt: new Date().toISOString(),
       utmSource: undefined,
       utmMedium: undefined,
@@ -392,10 +419,14 @@ export async function getCustomerByCioId(
       utmContent: undefined,
       referredBy: undefined,
       fbclidPresent: false,
-      // Safe defaults; real values appear on next refresh.
+      // Safe defaults; replaced by real values on next successful
+      // hydration. The brief misattribution to "control" + "organic"
+      // is acceptable because partial records are excluded from the
+      // dashboard's variant/traffic-specific cells anyway.
       trafficType: "organic",
       variant: "control",
       internal,
+      partial: true,
     };
   }
 }
@@ -479,9 +510,18 @@ export async function getWaitlistSummary(
     variantMap[dateStr] = (variantMap[dateStr] || 0) + 1;
   }
 
+  // Recent Signups visual list excludes partial records (those rescued
+  // by the fallback because direct hydration failed). Their data is
+  // placeholder ("—" name, "direct" source, "now" timestamp), so they'd
+  // create the appearance of fake fresh signups bubbling to the top and
+  // displacing real ones every page load. They still contribute to
+  // `total` and to today's `dailySignups` bucket, so cioTotal and
+  // cioSignupsByRange stay accurate — only the visible feed is purified.
+  const recent = people.filter((p) => !p.partial).slice(0, recentLimit);
+
   return {
     total,
-    recent: people.slice(0, recentLimit),
+    recent,
     dailySignups,
     dailySignupsByTraffic,
     totalByTraffic: {
