@@ -15,6 +15,8 @@
  *     attributes require a separate per-customer GET.
  */
 
+import { isInternalEmail } from "@/lib/internal";
+
 type Region = "us" | "eu";
 
 function getConfig() {
@@ -271,9 +273,23 @@ export async function searchWaitlistPeople(
 
 /**
  * Full attribute fetch for one customer addressed by cio_id.
+ *
+ * Accepts an optional fallbackEmail. When the attribute fetch fails
+ * (which happens transiently for very-recent signups due to lag between
+ * Customer.io's Track-API write path and App-API read path — confirmed
+ * via the debug-summary endpoint on 2026-05-25, ~7 records dropped per
+ * dashboard load including 4 freshly-created variant test signups), we
+ * fall back to a minimal record built from just the email so the signup
+ * still shows up on the dashboard. The next dashboard load will pick up
+ * the full attributes once they propagate.
+ *
+ * Without the fallback, freshly-created records silently disappear from
+ * the dashboard for ~5-15 minutes after submission, which was the
+ * symptom Cole reported.
  */
 export async function getCustomerByCioId(
-  cioId: string
+  cioId: string,
+  fallbackEmail?: string
 ): Promise<WaitlistPerson | null> {
   try {
     const resp = await cioFetch<CustomerAttributesResponse>(
@@ -338,8 +354,49 @@ export async function getCustomerByCioId(
       variant,
       internal,
     };
-  } catch {
-    return null;
+  } catch (err) {
+    // Hydration failed. Most common cause: Track-API → App-API
+    // propagation lag for very recent signups (App-API returns 404 on
+    // /attributes for cio_ids that ARE searchable in /customers).
+    //
+    // Log for visibility, then fall back to a minimal record if we
+    // have the email — better to show the signup with default
+    // metadata than to drop it from the dashboard entirely.
+    console.warn(
+      `[cio] hydrate failed for ${cioId}: ${
+        err instanceof Error ? err.message : String(err)
+      }${fallbackEmail ? ` — using fallback record for ${fallbackEmail}` : ""}`
+    );
+
+    if (!fallbackEmail) return null;
+
+    const internal = isInternalEmail(fallbackEmail);
+    return {
+      cioId,
+      email: fallbackEmail,
+      // First/last name + UTMs come from attributes — unavailable in
+      // the fallback path. Dashboard cells render "—" for these,
+      // which is fine for the brief window before the next load
+      // hydrates fully.
+      firstName: undefined,
+      lastName: undefined,
+      source: undefined,
+      // Use "now" as a placeholder so the record appears at the top
+      // of Recent Signups. When attributes propagate, the real
+      // waitlist_signed_up_at replaces this.
+      signedUpAt: new Date().toISOString(),
+      utmSource: undefined,
+      utmMedium: undefined,
+      utmCampaign: undefined,
+      utmTerm: undefined,
+      utmContent: undefined,
+      referredBy: undefined,
+      fbclidPresent: false,
+      // Safe defaults; real values appear on next refresh.
+      trafficType: "organic",
+      variant: "control",
+      internal,
+    };
   }
 }
 
@@ -353,13 +410,16 @@ export async function getCustomerByCioId(
 export async function getWaitlistSummary(
   recentLimit: number = 20
 ): Promise<WaitlistSummary> {
-  const allCioIds: string[] = [];
+  // Collect full identifiers (cio_id + email) so that if attribute
+  // hydration fails for a freshly-created record we can still build a
+  // minimal WaitlistPerson from the email rather than dropping it.
+  const allIdentifiers: SearchIdentifier[] = [];
   let cursor: string | undefined;
 
   for (let page = 0; page < 20; page++) {
     const resp = await searchWaitlistPeople(100, cursor);
     for (const ident of resp.identifiers || []) {
-      if (ident.cio_id) allCioIds.push(ident.cio_id);
+      if (ident.cio_id) allIdentifiers.push(ident);
     }
     if (!resp.next) break;
     cursor = resp.next;
@@ -367,12 +427,15 @@ export async function getWaitlistSummary(
 
   // Hydrate. For now, hydrate everyone; sort by signedUpAt desc; slice.
   // Limit concurrency to avoid hammering CIO's API on big waitlists.
+  // Pass each identifier's email as fallback so hydrate failures (e.g.
+  // Track-API → App-API propagation lag for very recent signups) still
+  // yield a minimal record with internal/external correctly classified.
   const concurrency = 10;
   const hydrated: (WaitlistPerson | null)[] = [];
-  for (let i = 0; i < allCioIds.length; i += concurrency) {
-    const batch = allCioIds.slice(i, i + concurrency);
+  for (let i = 0; i < allIdentifiers.length; i += concurrency) {
+    const batch = allIdentifiers.slice(i, i + concurrency);
     const results = await Promise.all(
-      batch.map((cid) => getCustomerByCioId(cid))
+      batch.map((ident) => getCustomerByCioId(ident.cio_id, ident.email))
     );
     hydrated.push(...results);
   }
