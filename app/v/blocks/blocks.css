@@ -59,6 +59,14 @@
   padding: 22px 32px;
   background: var(--bl-ink);
   color: var(--bl-cream);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+@media (max-width: 720px) {
+  .bl-topbar {
+    padding: 18px 22px;
+  }
 }
 
 .bl-topbar .wordmark {
@@ -170,6 +178,16 @@
   color: var(--bl-cream);
   padding: 32px;
   max-width: 460px;
+}
+
+@media (max-width: 480px) {
+  /* When the form card lives inside hero-right's 24px side padding
+     on small phones, an additional 32px of interior padding leaves
+     the input fields cramped. 24px interior keeps the fields wide
+     enough to read at 375px viewport. */
+  .bl-form-card {
+    padding: 24px;
+  }
 }
 
 .bl-form-card h2 {
@@ -290,6 +308,12 @@
 .bl-output-section .header {
   padding: 64px 40px 32px;
   max-width: 800px;
+}
+
+@media (max-width: 720px) {
+  .bl-output-section .header {
+    padding: 48px 24px 24px;
+  }
 }
 
 .bl-output-section .kicker {
@@ -438,6 +462,12 @@
   font-size: 11px;
   letter-spacing: 1.5px;
   text-transform: uppercase;
+}
+
+@media (max-width: 720px) {
+  .bl-footer {
+    padding: 24px 22px 32px;
+  }
 }
 
 .bl-footer a {
