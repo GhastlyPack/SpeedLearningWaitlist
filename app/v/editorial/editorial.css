@@ -196,7 +196,10 @@
   color: var(--ed-accent);
 }
 
-@media (min-width: 880px) {
+/* Two-column body only kicks in at proper desktop width. iPad portrait
+   (768px) and landscape (1024px) both keep the single-column layout so
+   line length stays comfortable for serif body text (~70 chars). */
+@media (min-width: 1100px) {
   .ed-body--cols {
     column-count: 2;
     column-gap: 36px;
@@ -330,10 +333,14 @@
 
 .ed-form {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
-@media (min-width: 720px) {
+/* Stack vertically on phones AND iPad portrait. At 1024px+ (iPad
+   landscape / desktop) switch to the horizontal layout where the form
+   reads as a single line — name, email, [spacer], button. Below this
+   width the input fields get crushed to ~160px which is unusable. */
+@media (min-width: 1024px) {
   .ed-form {
     grid-template-columns: 1fr 1fr 2fr auto;
     gap: 10px;
