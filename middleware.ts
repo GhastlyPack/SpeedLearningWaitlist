@@ -2,10 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 
 // Edge runtime by default. Two responsibilities:
 //   1. Rewrite dash.speedlearning.com/* -> /dashboard/* (same Next app serves both)
-//   2. HTTP Basic Auth gate on /dashboard/* using DASHBOARD_PASSWORD
+//   2. HTTP Basic Auth gate on /dashboard/* AND /v (the variants index)
+//      using DASHBOARD_PASSWORD. /v/<slug> individual variant pages
+//      stay PUBLIC — Meta ads need to drive traffic to them directly,
+//      so they can't sit behind auth. Only the listing of all variants
+//      at /v gets the gate, to hide it from scrapers / casual snoops.
 
 const DASHBOARD_PATH_PREFIX = "/dashboard";
-const REALM = 'Basic realm="SpeedLearning Dashboard", charset="UTF-8"';
+const VARIANTS_INDEX_PATHS = new Set(["/v", "/v/"]);
+const REALM = 'Basic realm="SpeedLearning Internal", charset="UTF-8"';
 
 function unauthorized() {
   return new NextResponse("Authentication required.", {
@@ -68,9 +73,12 @@ export function middleware(req: NextRequest) {
     rewriteTarget.pathname = DASHBOARD_PATH_PREFIX + (url.pathname === "/" ? "" : url.pathname);
   }
 
-  // 2) Gate any /dashboard/* path with Basic Auth.
+  // 2) Gate /dashboard/* AND the /v variants index with Basic Auth.
+  //    Individual variant pages (/v/brutalist, /v/editorial, etc.)
+  //    stay public so Meta ads can drive traffic directly to them.
   const targetPath = rewriteTarget?.pathname || url.pathname;
-  if (targetPath.startsWith(DASHBOARD_PATH_PREFIX)) {
+  const isVariantsIndex = VARIANTS_INDEX_PATHS.has(targetPath);
+  if (targetPath.startsWith(DASHBOARD_PATH_PREFIX) || isVariantsIndex) {
     if (!checkBasicAuth(req)) return unauthorized();
   }
 
