@@ -125,19 +125,36 @@
   letter-spacing: 1.4px;
   text-transform: uppercase;
   color: var(--brut-ink);
-  line-height: 1.5;
+  line-height: 1.4;
   margin: 0 0 22px;
   padding: 10px 0;
   border-top: 3px solid var(--brut-ink);
   border-bottom: 3px solid var(--brut-ink);
+  /* Stay on a single line between the two black rules. Looks weird
+     wrapping to two lines because the spacing isn't tuned for that. */
+  white-space: nowrap;
+  /* If the viewport is so narrow that even the shrunk size below still
+     overflows, clip rather than push the page wider. */
+  overflow: hidden;
 }
 
-@media (max-width: 480px) {
-  /* Wrap the trust line cleanly on small phones — drop the dot separators
-     to soft line breaks so we don't end up with awkward orphaned words. */
+/* Sweet-spot shrink for the 880px–1240px range, where the hero goes
+   2-col and the trust line lives in the cramped ~480px left column.
+   Outside this range (mobile stack OR wide desktop) the default
+   11.5/1.4 size fits comfortably. */
+@media (min-width: 880px) and (max-width: 1240px) {
   .brut-trust-line {
-    font-size: 10.5px;
-    letter-spacing: 1.1px;
+    font-size: 9.5px;
+    letter-spacing: 1px;
+  }
+}
+
+/* Small phones: drop down a notch so the line stays on one line
+   inside a 24px-padded ~327px container. */
+@media (max-width: 420px) {
+  .brut-trust-line {
+    font-size: 9.5px;
+    letter-spacing: 1px;
   }
 }
 
