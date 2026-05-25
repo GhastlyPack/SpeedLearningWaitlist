@@ -280,6 +280,65 @@ export async function searchWaitlistPeople(
   );
 }
 
+// -----------------------------------------------------------------------------
+// Hydration cache
+//
+// Customer.io waitlist records are write-once: once a person signs up,
+// their email, name, signedUpAt, UTMs, and variant don't change. Re-
+// fetching the same record on every dashboard load is wasteful and
+// directly causes the visible "now you see it, now you don't" issue
+// when CIO's /attributes endpoint flakes out.
+//
+// Module-level Map. Lives for the lifetime of the serverless instance —
+// survives across requests on a warm Vercel function, lost on cold
+// start. Good enough for our scale (low traffic, growing waitlist) and
+// trivially upgradeable to Vercel KV if we ever need cross-instance
+// persistence.
+//
+// Resolution order in getCustomerByCioId becomes:
+//   1. Fresh cache entry (≤ TTL) → serve from cache, no API call
+//   2. Cache miss or expired → try CIO with retry
+//   3. On CIO success → update cache, return fresh
+//   4. On CIO failure WITH stale cache → return stale cache (better than
+//      a placeholder fallback — last-known-good is real data)
+//   5. On CIO failure WITHOUT cache → partial fallback (only path that
+//      produces the dashboard's "—" placeholder rows)
+
+interface HydrationCacheEntry {
+  person: WaitlistPerson;
+  cachedAt: number;
+}
+
+const HYDRATION_CACHE = new Map<string, HydrationCacheEntry>();
+// 24 hours. Long enough that occasional CIO-admin attribute edits
+// (e.g. flipping traffic_type manually) propagate within a day, short
+// enough to keep memory bounded. Stale entries are STILL returned on
+// CIO failure — TTL just controls when we attempt a fresh fetch.
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+const HYDRATION_STATS = {
+  cacheHits: 0,
+  cacheStaleServed: 0,
+  freshFetched: 0,
+  retrySucceeded: 0,
+  partialFallbacks: 0,
+};
+
+function cacheIsFresh(entry: HydrationCacheEntry, now: number): boolean {
+  return now - entry.cachedAt < CACHE_TTL_MS;
+}
+
+/**
+ * Diagnostic snapshot of the in-memory hydration cache. Exposed via
+ * /api/debug-summary so the cache hit rate is visible.
+ */
+export function getHydrationStats() {
+  return {
+    cacheSize: HYDRATION_CACHE.size,
+    ...HYDRATION_STATS,
+  };
+}
+
 /**
  * Full attribute fetch for one customer addressed by cio_id.
  *
@@ -366,15 +425,30 @@ export async function getCustomerByCioId(
   cioId: string,
   fallbackEmail?: string
 ): Promise<WaitlistPerson | null> {
-  // Try the attribute fetch up to twice with a short delay. CIO's App API
-  // is observably flaky — a single transient blip would have dropped the
-  // record (or used a noisy placeholder) before this retry was added.
-  // 200ms is short enough to keep dashboard load times reasonable but
-  // long enough to clear most transient failures.
+  const now = Date.now();
+  const cached = HYDRATION_CACHE.get(cioId);
+
+  // Fast path: fresh cache entry. Waitlist records are write-once, so
+  // a cached entry is identical to what we'd refetch — no API call
+  // needed. This is what makes the dashboard stable across loads:
+  // once we've successfully hydrated a record once, every subsequent
+  // load serves the cached copy.
+  if (cached && cacheIsFresh(cached, now)) {
+    HYDRATION_STATS.cacheHits++;
+    return cached.person;
+  }
+
+  // Cache miss or expired. Try a fresh fetch with one retry — CIO's
+  // App API is observably flaky and a single retry catches most
+  // transient blips.
   let lastError: unknown;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      return await fetchCustomerAttributes(cioId);
+      const fresh = await fetchCustomerAttributes(cioId);
+      HYDRATION_CACHE.set(cioId, { person: fresh, cachedAt: now });
+      if (attempt === 0) HYDRATION_STATS.freshFetched++;
+      else HYDRATION_STATS.retrySucceeded++;
+      return fresh;
     } catch (err) {
       lastError = err;
       if (attempt === 0) {
@@ -383,16 +457,31 @@ export async function getCustomerByCioId(
     }
   }
 
-  // Both attempts failed. Log for monitoring and decide whether to
-  // return a placeholder (if we have the email from search) or null
-  // (no useful info, drop it).
+  // Fresh fetch failed. If we have a stale cache entry, serve it —
+  // last-known-good data beats a "—" placeholder by a mile. The
+  // record's data doesn't change, so a stale copy is still correct
+  // (it just hasn't been re-verified recently).
+  if (cached) {
+    HYDRATION_STATS.cacheStaleServed++;
+    console.warn(
+      `[cio] hydrate failed for ${cioId} after retry; serving stale cache (age ${
+        Math.round((now - cached.cachedAt) / 1000)
+      }s)`
+    );
+    return cached.person;
+  }
+
+  // No cache, no fresh fetch. This is a brand-new record that's
+  // never successfully hydrated. Last resort: partial fallback if
+  // we have the email; otherwise drop it.
   console.warn(
-    `[cio] hydrate failed for ${cioId} after retry: ${
+    `[cio] hydrate failed for ${cioId} after retry, no cache: ${
       lastError instanceof Error ? lastError.message : String(lastError)
-    }${fallbackEmail ? ` — using fallback record for ${fallbackEmail}` : ""}`
+    }${fallbackEmail ? ` — using partial fallback for ${fallbackEmail}` : ""}`
   );
 
   if (!fallbackEmail) return null;
+  HYDRATION_STATS.partialFallbacks++;
 
   {
     const internal = isInternalEmail(fallbackEmail);

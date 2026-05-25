@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   searchWaitlistPeople,
   getCustomerByCioId,
+  getHydrationStats,
   type WaitlistPerson,
 } from "@/lib/cio";
 
@@ -136,6 +137,10 @@ export async function GET(req: NextRequest) {
     rescuedByFallback,
     finalCount: finalNonNull.length,
     afterInternalFilter: afterInternalFilter.length,
+    // Hydration cache stats. Cache hits = records served from memory
+    // without an API call. High hit rate = stable dashboard. After
+    // a few loads on a warm instance, hits should dominate.
+    cache: getHydrationStats(),
     recentSample,
     byVariant: finalNonNull.reduce<Record<string, number>>((acc, p) => {
       acc[p.variant] = (acc[p.variant] || 0) + 1;
