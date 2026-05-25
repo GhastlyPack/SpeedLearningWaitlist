@@ -93,12 +93,15 @@
 }
 
 .brut-headline {
-  font-size: clamp(48px, 9vw, 96px);
+  font-size: clamp(44px, 9vw, 96px);
   font-weight: 800;
   line-height: 0.95;
   letter-spacing: -2.5px;
   text-transform: uppercase;
   margin: 0 0 24px;
+  /* Each <br /> in the headline gets a small breath between lines so
+     stacked declaratives read as separate beats, not run-together. */
+  word-spacing: -0.04em;
 }
 
 .brut-headline .strike {
@@ -115,6 +118,29 @@
   font-weight: 500;
 }
 
+.brut-trust-line {
+  font-family: var(--font-mono), monospace;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--brut-ink);
+  line-height: 1.5;
+  margin: 0 0 22px;
+  padding: 10px 0;
+  border-top: 3px solid var(--brut-ink);
+  border-bottom: 3px solid var(--brut-ink);
+}
+
+@media (max-width: 480px) {
+  /* Wrap the trust line cleanly on small phones — drop the dot separators
+     to soft line breaks so we don't end up with awkward orphaned words. */
+  .brut-trust-line {
+    font-size: 10.5px;
+    letter-spacing: 1.1px;
+  }
+}
+
 .brut-price-chip {
   display: inline-block;
   background: var(--brut-hot);
@@ -127,7 +153,7 @@
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  margin-top: 12px;
+  margin-top: 4px;
 }
 
 /* ---------- FORM CARD ---------- */
@@ -297,9 +323,12 @@
   gap: 18px;
 }
 
-@media (min-width: 720px) {
+/* 768px breakpoint = iPad portrait. 8 tiles in 4 cols × 2 rows reads
+   cleanly here (~166px per tile, enough for "AI CHAT PARTNER"); below
+   this we drop to 2 cols × 4 rows for comfortable phone reading. */
+@media (min-width: 768px) {
   .brut-grid {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 

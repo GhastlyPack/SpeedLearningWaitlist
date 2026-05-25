@@ -21,35 +21,35 @@ const VARIANT = "brutalist";
 
 const OUTPUTS = [
   "Full report",
-  "Audio summary",
+  "Audio/video summary",
   "Slide deck",
   "Mind map",
   "Flashcards",
   "Infographics",
-  "Explainer video",
   "TLDR card",
-  "Bibliography",
   "AI chat partner",
 ];
 
 const COMPARE = {
   google: [
-    "50 tabs to read",
+    "50+ tabs to read",
     "No synthesis",
     "Top results are paid SEO",
     "You do all the work",
+    "Spend all day working for knowledge",
   ],
   chatgpt: [
     "Hallucinated facts",
     "No real citations",
     "Plain text output",
     "Can't verify what's true",
+    "Hours of back-and-forth chatting",
   ],
   speedlearning: [
     "50+ sources evaluated",
-    "Every claim cited",
-    "10 outputs, not just text",
-    "30 to 60 minutes",
+    "Every claim validated",
+    "8 outputs, not just text",
+    "30 to 90 minutes to learn",
   ],
 };
 
@@ -83,13 +83,17 @@ function Hero() {
       <div>
         <span className="brut-eyebrow">$50 flat · launches Q3</span>
         <h1 className="brut-headline">
-          STOP PAYING <span className="strike">GURUS</span> FOR FREE INFO.
+          TYPE A TOPIC.
+          <br />
+          JUST ADD CONTEXT.
         </h1>
         <p className="brut-subhead">
-          Type a topic. SpeedLearning pulls 50+ sources and synthesizes a
-          complete learning library in 30 to 60 minutes. Cited. Verifiable.
-          One flat price.
+          SpeedLearning pulls 50+ sources and synthesizes a complete
+          learning library in 30 to 60 minutes.
         </p>
+        <div className="brut-trust-line">
+          Sources cited · Information verifiable · One flat price, every time
+        </div>
         <span className="brut-price-chip">
           50% off · first 1,000 signups
         </span>
@@ -107,7 +111,7 @@ function OutputsSection() {
   return (
     <section className="brut-section">
       <div className="brut-container">
-        <span className="kicker">ONE TOPIC · 10 OUTPUTS</span>
+        <span className="kicker">ONE TOPIC · 8 OUTPUTS</span>
         <h2>
           Everything you need
           <br />
