@@ -135,11 +135,28 @@
 
 .y2k-topbar .url {
   flex: 1;
+  min-width: 0; /* allow flex item to shrink below content width */
   background: var(--y2k-window-bg);
   border: 1px inset var(--y2k-chrome-dark);
   padding: 4px 10px;
   font-size: 12px;
   color: var(--y2k-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.y2k-topbar strong {
+  white-space: nowrap;
+}
+
+/* On narrow phones the URL bar + "SPEEDLEARNING.EXE" label fight for
+   the same row. Hide the app-name label below 520px so the URL gets
+   the full remaining width and stays readable. */
+@media (max-width: 520px) {
+  .y2k-topbar strong {
+    display: none;
+  }
 }
 
 /* ---------- HERO ---------- */
@@ -167,7 +184,7 @@
 /* Chrome headline — big metallic gradient with bevels */
 
 .y2k-headline {
-  font-size: clamp(54px, 11vw, 120px);
+  font-size: clamp(48px, 11vw, 120px);
   font-weight: 900;
   line-height: 0.95;
   letter-spacing: -3px;
@@ -438,9 +455,13 @@
   gap: 14px;
 }
 
-@media (min-width: 720px) {
+/* 8 stickers lay out as 2×4 on phones, 4×2 from iPad portrait
+   (768px) onwards. The chunky hard-shadow stickers need ~150px+
+   width to breathe; the 5-col layout from the old 720px breakpoint
+   crushed them too tight on narrow tablets. */
+@media (min-width: 768px) {
   .y2k-sticker-grid {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 

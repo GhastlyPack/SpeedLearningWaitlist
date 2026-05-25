@@ -21,14 +21,12 @@ const VARIANT = "y2k";
 
 const OUTPUTS = [
   "Full report",
-  "Audio summary",
+  "Audio + video",
   "Slide deck",
   "Mind map",
   "Flashcards",
   "Infographics",
-  "Explainer video",
   "TLDR card",
-  "Bibliography",
   "AI chat partner",
 ];
 
@@ -91,8 +89,9 @@ function Hero() {
         FAST.
       </h1>
       <p className="y2k-subhead">
-        Type a topic. Get 10 ways to learn it — report, deck, audio,
-        flashcards, more. All cited. All yours. $50 forever.
+        Type a topic. SpeedLearning pulls 50+ sources and synthesizes 8
+        ways to learn it in 30 to 60 minutes. All cited. All yours.
+        $50 forever.
       </p>
 
       <FormWindow
@@ -110,7 +109,7 @@ function OutputsSection() {
       <div className="y2k-container">
         <div className="y2k-section-head">
           <span className="kicker">
-            <Sparkle size={10} /> 10 OUTPUTS <Sparkle size={10} />
+            <Sparkle size={10} /> 8 OUTPUTS <Sparkle size={10} />
           </span>
           <h2>YOU GET ALL OF THIS.</h2>
         </div>
