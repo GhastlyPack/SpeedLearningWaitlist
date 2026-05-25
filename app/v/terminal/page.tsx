@@ -21,14 +21,12 @@ const VARIANT = "terminal";
 
 const OUTPUTS = [
   "Full report",
-  "Audio summary",
+  "Multimedia recap",
   "Slide deck",
   "Mind map",
   "Flashcards",
   "Infographics",
-  "Explainer video",
   "TLDR card",
-  "Bibliography",
   "AI chat partner",
 ];
 
@@ -83,7 +81,7 @@ function Hero() {
 
       <p className="tm-subhead">
         Pipe a topic into SpeedLearning. We synthesize 50+ vetted sources
-        into 10 outputs — report, audio, slides, mind map, flashcards,
+        into 8 outputs — report, audio, slides, mind map, flashcards,
         more. Every claim sourced. Yours forever after one payment.
       </p>
 
@@ -98,7 +96,7 @@ function Hero() {
           <span className="info">[info]</span> synthesizing library...
         </span>
         <span className="line">
-          <span className="ok">[ ok ]</span> 10 outputs ready · 47m 12s elapsed
+          <span className="ok">[ ok ]</span> 8 outputs ready · 47m 12s elapsed
         </span>
         <span className="line dim">
           → exit code 0
@@ -113,7 +111,7 @@ function Hero() {
 function OutputsSection() {
   return (
     <section className="tm-section">
-      <h2 className="section-head">// outputs(10):</h2>
+      <h2 className="section-head">// outputs(8):</h2>
       <div className="tm-output-list">
         {OUTPUTS.map((label, i) => (
           <div key={label} className="line">

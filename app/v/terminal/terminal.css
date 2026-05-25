@@ -98,6 +98,19 @@
   color: var(--tm-green-dim);
 }
 
+/* On narrow phones the prompt + right-side metadata don't fit on one
+   row. Drop the "conn: secure · uptime: ∞" string below 600px — the
+   left prompt with the blinking cursor still sells the terminal
+   metaphor on its own. */
+@media (max-width: 600px) {
+  .tm-topbar {
+    padding: 14px 18px;
+  }
+  .tm-topbar .right {
+    display: none;
+  }
+}
+
 .tm-topbar .blink {
   display: inline-block;
   width: 8px;
