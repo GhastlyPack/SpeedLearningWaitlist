@@ -18,10 +18,15 @@
 
 .bl-page {
   --bl-cream: #f6f1e3;
-  --bl-coral: #ff5341;
-  --bl-blue: #2356f6;
-  --bl-yellow: #ffd23f;
-  --bl-mint: #43c97f;
+  /* Vibrant constructivist primaries — punchier than the previous set,
+     which read as muted next to the chunky display weights. These are
+     the "Bauhaus poster" / "candy primary" values: maximum saturation,
+     slightly shifted off the pure hex primaries to avoid eye-strain
+     while still reading as electric. */
+  --bl-coral: #ff0040;   /* electric crimson (was muted coral #ff5341) */
+  --bl-blue: #0040ff;    /* electric royal (was deeper #2356f6)       */
+  --bl-yellow: #ffeb00;  /* pure traffic-light yellow (was goldenrod) */
+  --bl-mint: #00e676;    /* vivid lime (was emerald-mint #43c97f)     */
   --bl-ink: #11140f;
   --bl-paper: #fdfbf3;
 
@@ -98,6 +103,16 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
+}
+
+/* Reduce side padding on phones — 40px × 2 = 80px eats most of a
+   375px viewport. Tablet+ keeps the generous padding for the
+   constructivist-poster feel. */
+@media (max-width: 720px) {
+  .bl-hero-left,
+  .bl-hero-right {
+    padding: 64px 24px;
+  }
 }
 
 .bl-eyebrow {
@@ -304,9 +319,11 @@
   padding: 4px;
 }
 
-@media (min-width: 720px) {
+/* 8 tiles → 4 cols at iPad portrait (768px) and up, 2 cols on phones.
+   Matches the same 4×2 / 2×4 pattern used on Brutalist / Y2K. */
+@media (min-width: 768px) {
   .bl-output-grid {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
@@ -335,28 +352,26 @@
   margin-top: 10px;
 }
 
-.bl-output-block:nth-child(5n + 1) {
+/* 4-color rotation across the 8 tiles (was 5-color including white).
+   Each saturated primary appears twice; the grid reads as pure color
+   blocks with no neutral interruption. */
+.bl-output-block:nth-child(4n + 1) {
   background: var(--bl-coral);
   color: var(--bl-paper);
 }
 
-.bl-output-block:nth-child(5n + 2) {
+.bl-output-block:nth-child(4n + 2) {
   background: var(--bl-yellow);
   color: var(--bl-ink);
 }
 
-.bl-output-block:nth-child(5n + 3) {
+.bl-output-block:nth-child(4n + 3) {
   background: var(--bl-blue);
   color: var(--bl-paper);
 }
 
-.bl-output-block:nth-child(5n + 4) {
+.bl-output-block:nth-child(4n + 4) {
   background: var(--bl-mint);
-  color: var(--bl-ink);
-}
-
-.bl-output-block:nth-child(5n + 5) {
-  background: var(--bl-paper);
   color: var(--bl-ink);
 }
 
@@ -366,6 +381,12 @@
   background: var(--bl-blue);
   color: var(--bl-paper);
   padding: 80px 40px;
+}
+
+@media (max-width: 720px) {
+  .bl-repeat {
+    padding: 64px 24px;
+  }
 }
 
 .bl-repeat .inner {

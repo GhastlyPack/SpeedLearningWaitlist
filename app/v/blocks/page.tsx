@@ -21,14 +21,12 @@ const VARIANT = "blocks";
 
 const OUTPUTS = [
   "Full report",
-  "Audio summary",
+  "A/V summary",
   "Slide deck",
   "Mind map",
   "Flashcards",
   "Infographics",
-  "Explainer video",
   "TLDR card",
-  "Bibliography",
   "AI chat partner",
 ];
 
@@ -66,8 +64,8 @@ function Hero() {
           <span className="nl">For $50.</span>
         </h1>
         <p className="bl-subhead">
-          Type a topic. Get 10 outputs — report, audio, slides, mind map,
-          flashcards, more. Every claim cited. Yours forever.
+          Type a topic. SpeedLearning pulls 50+ sources and synthesizes
+          8 outputs in 30 to 60 minutes. Every claim cited. Yours forever.
         </p>
         <div className="bl-meta-bar">
           <span>50+ sources</span>
@@ -87,14 +85,14 @@ function OutputsSection() {
   return (
     <section className="bl-output-section">
       <div className="header">
-        <div className="kicker">One topic — ten outputs</div>
+        <div className="kicker">One topic — eight outputs</div>
         <h2>You get every way to learn it.</h2>
       </div>
 
       <div className="bl-output-grid">
         {OUTPUTS.map((label, i) => (
           <div key={label} className="bl-output-block">
-            <span className="n">{String(i + 1).padStart(2, "0")} / 10</span>
+            <span className="n">{String(i + 1).padStart(2, "0")} / 08</span>
             <span className="name">{label}</span>
           </div>
         ))}
