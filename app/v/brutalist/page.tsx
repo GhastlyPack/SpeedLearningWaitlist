@@ -50,6 +50,7 @@ const COMPARE = {
     "Every claim validated",
     "8 outputs, not just text",
     "30 to 90 minutes to learn",
+    "$50 once, yours forever",
   ],
 };
 
