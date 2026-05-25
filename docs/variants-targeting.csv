@@ -1,0 +1,7 @@
+Lander name,Lander style description,Lander direct link,Demographic Targeting
+Control,"Editorial minimal — warm cream, oxblood accent, restrained traditional layout. The baseline reference design.",https://speedlearning.com/,Everyone (baseline / control)
+Brutalist,"Acid-yellow page with thick black borders, hard offset shadows, oversized uppercase declarative headlines, mono labels.",https://speedlearning.com/v/brutalist,Everyone
+Editorial,"NYT/Substack-style long-form manifesto with drop cap, pull quotes, multi-column body, byline metadata, italic-accented serif headline.",https://speedlearning.com/v/editorial,"Everyone, slight lean to scholarly / long-form-reader audiences"
+Y2K,"Chrome metallic headline over pink/cyan/violet gradient, fake OS-window form (titlebar + min/max/close), starfield, sparkles. Deliberately over-the-top.",https://speedlearning.com/v/y2k,"STRICTLY 40+ (goofy nostalgia test — gauge whether the era-specific aesthetic pulls older audiences)"
+Blocks,"Full-bleed saturated color blocks (Bauhaus poster). Vibrant primaries (red / yellow / blue / lime), no shadows, no rounded corners, chunky uppercase display sans.",https://speedlearning.com/v/blocks,25–45
+Terminal,"Green-on-black CRT phosphor aesthetic. JetBrains Mono throughout, scanline overlay, blinking cursors, CLI-prompt form (fake $ prompts + > inputs), ASCII rules.","https://speedlearning.com/v/terminal","CS niches ONLY: computer science, cyber security, programming, frontend / backend dev, Linux, devops, sysadmin, etc."
