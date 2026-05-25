@@ -19,9 +19,19 @@ export interface Variant {
   description: string;
   /** Style family from the UI/UX Pro Max catalog. Reference only — not used at runtime. */
   style: string;
+  /**
+   * True if this variant didn't make the cut for the active A/B test.
+   * URL stays live (resolveVariantSlug still accepts it) so the
+   * variant can be revived for retargeting campaigns later without a
+   * code change beyond flipping this flag. The dashboard's Variant
+   * filter hides archived variants UNLESS they have signups — so a
+   * future retargeting campaign auto-surfaces in the dropdown.
+   */
+  archived?: boolean;
 }
 
 export const VARIANTS: ReadonlyArray<Variant> = [
+  // Active variants — selected for the round-2 conversion test (May 2026).
   {
     slug: "brutalist",
     name: "Brutalist",
@@ -29,40 +39,16 @@ export const VARIANTS: ReadonlyArray<Variant> = [
     style: "Neubrutalism",
   },
   {
-    slug: "glass",
-    name: "Glass",
-    description: "Frosted cards over a soft gradient mesh. Modern SaaS polish.",
-    style: "Glassmorphism",
-  },
-  {
-    slug: "cinema",
-    name: "Cinematic Dark",
-    description: "OLED black, big serif headline, restrained neon accent.",
-    style: "Dark Mode (OLED)",
-  },
-  {
-    slug: "bento",
-    name: "Bento Grid",
-    description: "Apple-style modular tiles, each pitching one product benefit.",
-    style: "Bento Box Grid",
-  },
-  {
-    slug: "clay",
-    name: "Clay",
-    description: "Soft 3D, pastel surfaces, rounded everything. Friendly + tactile.",
-    style: "Claymorphism",
+    slug: "editorial",
+    name: "Editorial Magazine",
+    description: "New York Times-y multi-column, drop caps, photojournalism.",
+    style: "Editorial Grid / Magazine",
   },
   {
     slug: "y2k",
     name: "Y2K",
     description: "Chrome type over pink/cyan gradient. Very online.",
     style: "Y2K Aesthetic",
-  },
-  {
-    slug: "editorial",
-    name: "Editorial Magazine",
-    description: "New York Times-y multi-column, drop caps, photojournalism.",
-    style: "Editorial Grid / Magazine",
   },
   {
     slug: "blocks",
@@ -76,11 +62,44 @@ export const VARIANTS: ReadonlyArray<Variant> = [
     description: "Green-on-black, monospace everything, scanlines. Hacker vibes.",
     style: "Cyberpunk UI",
   },
+
+  // Archived — didn't make the round-2 cut. URLs stay live for potential
+  // retargeting use. Hidden from the dashboard variant dropdown until
+  // they have signups, then auto-surfaced.
+  {
+    slug: "glass",
+    name: "Glass",
+    description: "Frosted cards over a soft gradient mesh. Modern SaaS polish.",
+    style: "Glassmorphism",
+    archived: true,
+  },
+  {
+    slug: "cinema",
+    name: "Cinematic Dark",
+    description: "OLED black, big serif headline, restrained neon accent.",
+    style: "Dark Mode (OLED)",
+    archived: true,
+  },
+  {
+    slug: "bento",
+    name: "Bento Grid",
+    description: "Apple-style modular tiles, each pitching one product benefit.",
+    style: "Bento Box Grid",
+    archived: true,
+  },
+  {
+    slug: "clay",
+    name: "Clay",
+    description: "Soft 3D, pastel surfaces, rounded everything. Friendly + tactile.",
+    style: "Claymorphism",
+    archived: true,
+  },
   {
     slug: "aurora",
     name: "Aurora",
     description: "Flowing gradient backdrop, modern minimal foreground.",
     style: "Aurora UI",
+    archived: true,
   },
 ];
 

@@ -7,6 +7,10 @@ import { VARIANTS } from "@/lib/variants";
  * lives here so the team has one URL (speedlearning.com/v) to browse all
  * the design variations during the conversion test.
  *
+ * Active variants list first; archived variants (cut from the round-2
+ * test but kept around for potential retargeting reuse) appear in a
+ * de-emphasized section below.
+ *
  * noindex so search engines don't surface it; conversion-test variants
  * shouldn't be indexed independently of the canonical lander anyway.
  */
@@ -17,6 +21,9 @@ export const metadata: Metadata = {
 };
 
 export default function VariantsIndex() {
+  const active = VARIANTS.filter((v) => !v.archived);
+  const archived = VARIANTS.filter((v) => v.archived);
+
   return (
     <main
       style={{
@@ -37,12 +44,13 @@ export default function VariantsIndex() {
       >
         Lander variants
       </h1>
-      <p style={{ color: "var(--ink-mute)", fontSize: 14, marginBottom: 40 }}>
-        10 design alternatives to the control lander. Each runs the same
+      <p style={{ color: "var(--ink-mute)", fontSize: 14, marginBottom: 32 }}>
+        Design alternatives to the control lander. Each runs the same
         waitlist offer and tracks signups under its own <code>variant</code>{" "}
         attribute. Compare conversion in the dashboard.
       </p>
 
+      <SectionHeading label="Active · in conversion test" />
       <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
         <VariantRow
           slug="(control)"
@@ -50,7 +58,7 @@ export default function VariantsIndex() {
           description="The current lander at speedlearning.com — editorial minimal."
           href="/"
         />
-        {VARIANTS.map((v) => (
+        {active.map((v) => (
           <VariantRow
             key={v.slug}
             slug={v.slug}
@@ -60,7 +68,49 @@ export default function VariantsIndex() {
           />
         ))}
       </div>
+
+      {archived.length > 0 && (
+        <>
+          <SectionHeading label="Archived · available for retargeting" />
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 0,
+              opacity: 0.65,
+            }}
+          >
+            {archived.map((v) => (
+              <VariantRow
+                key={v.slug}
+                slug={v.slug}
+                name={v.name}
+                description={v.description}
+                href={`/v/${v.slug}`}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </main>
+  );
+}
+
+function SectionHeading({ label }: { label: string }) {
+  return (
+    <div
+      style={{
+        fontFamily: "var(--font-mono), monospace",
+        fontSize: 11,
+        letterSpacing: 1.4,
+        textTransform: "uppercase",
+        color: "var(--ink-mute)",
+        marginTop: 32,
+        marginBottom: 4,
+      }}
+    >
+      {label}
+    </div>
   );
 }
 

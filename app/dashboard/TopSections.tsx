@@ -150,10 +150,11 @@ export default function TopSections({
   const [traffic, setTraffic] = useState<GaTrafficType>("all");
   const [variant, setVariant] = useState<string>(VARIANT_ALL);
 
-  // Variant dropdown options: control first (it's the baseline), then the
-  // 10 registered variants. Each gets its all-time signup count appended.
-  // Includes registered variants even if they have 0 signups so the option
-  // list is deterministic and explains itself.
+  // Variant dropdown options: control first (the baseline), then every
+  // ACTIVE registered variant with its all-time signup count. Archived
+  // variants are skipped UNLESS they have signups — that way an archived
+  // variant revived for a retargeting campaign auto-surfaces in the
+  // dropdown the moment data lands, no code change needed.
   const variantOptions = useMemo(() => {
     const opts: Array<{ slug: string; label: string }> = [];
     opts.push({
@@ -161,9 +162,12 @@ export default function TopSections({
       label: `Control (${cioTotalByVariant.control ?? 0})`,
     });
     for (const v of VARIANTS) {
+      const count = cioTotalByVariant[v.slug] ?? 0;
+      if (v.archived && count === 0) continue;
+      const suffix = v.archived ? " · archived" : "";
       opts.push({
         slug: v.slug,
-        label: `${v.name} (${cioTotalByVariant[v.slug] ?? 0})`,
+        label: `${v.name} (${count})${suffix}`,
       });
     }
     return opts;
