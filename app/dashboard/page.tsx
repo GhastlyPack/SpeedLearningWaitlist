@@ -329,11 +329,16 @@ export default async function DashboardPage() {
 
   const maxTrend = Math.max(1, ...trendForChart.map((d) => d.sessions));
 
+  // Edge runtime defaults to UTC. Format the topbar timestamp in PT
+  // since the team's based in Pacific. timeZoneName: "short" appends
+  // "PDT" or "PST" automatically depending on DST.
   const now = new Date().toLocaleString("en-US", {
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    timeZone: "America/Los_Angeles",
+    timeZoneName: "short",
   });
 
   return (
