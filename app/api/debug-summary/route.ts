@@ -56,13 +56,24 @@ export async function GET(req: NextRequest) {
   // (cio_id + email — the email gets passed to the fallback path so
   // the debug numbers match what the dashboard actually sees).
   const allIdentifiers: SearchIdentifierLite[] = [];
+  const seenCioIds = new Set<string>();
   let cursor: string | undefined;
   let pages = 0;
+  let loopDetected = false;
   for (let page = 0; page < 20; page++) {
     pages = page + 1;
     const resp = await searchWaitlistPeople(100, cursor);
+    let newOnThisPage = 0;
     for (const ident of resp.identifiers || []) {
-      if (ident.cio_id) allIdentifiers.push(ident);
+      if (ident.cio_id && !seenCioIds.has(ident.cio_id)) {
+        seenCioIds.add(ident.cio_id);
+        allIdentifiers.push(ident);
+        newOnThisPage++;
+      }
+    }
+    if (newOnThisPage === 0) {
+      if (page > 0) loopDetected = true;
+      break;
     }
     if (!resp.next) break;
     cursor = resp.next;
@@ -131,6 +142,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     pagesScanned: pages,
+    paginationLoopDetected: loopDetected,
     searchCioIds: allIdentifiers.length,
     hydratedNonNull: hydratedNonNull.length,
     hydrateFailedCount,

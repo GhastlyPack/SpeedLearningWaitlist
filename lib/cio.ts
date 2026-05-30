@@ -533,13 +533,38 @@ export async function getWaitlistSummary(
   // Collect full identifiers (cio_id + email) so that if attribute
   // hydration fails for a freshly-created record we can still build a
   // minimal WaitlistPerson from the email rather than dropping it.
+  //
+  // Deduplicates by cio_id as a defense against CIO search pagination
+  // bugs: if the server ever returns the same page twice (cursor not
+  // advancing) we don't inflate the total. Observed on 2026-05-30 when
+  // dashboard showed 2,000 signups against CIO's actual 148 — exactly
+  // 20 pages × 100 = our pagination cap, meaning we looped on the same
+  // page 20 times until breaking.
+  const seenCioIds = new Set<string>();
   const allIdentifiers: SearchIdentifier[] = [];
   let cursor: string | undefined;
 
   for (let page = 0; page < 20; page++) {
     const resp = await searchWaitlistPeople(100, cursor);
+    let newOnThisPage = 0;
     for (const ident of resp.identifiers || []) {
-      if (ident.cio_id) allIdentifiers.push(ident);
+      if (ident.cio_id && !seenCioIds.has(ident.cio_id)) {
+        seenCioIds.add(ident.cio_id);
+        allIdentifiers.push(ident);
+        newOnThisPage++;
+      }
+    }
+    // Loop-detection: if a page brings nothing new, CIO is either out
+    // of results or stuck on the same page. Either way, stop here.
+    if (newOnThisPage === 0) {
+      if (page > 0) {
+        console.warn(
+          `[cio] search pagination yielded no new records on page ${page} (${
+            (resp.identifiers || []).length
+          } returned, all duplicates) — breaking to avoid infinite loop`
+        );
+      }
+      break;
     }
     if (!resp.next) break;
     cursor = resp.next;

@@ -57,12 +57,28 @@ export async function POST(req: NextRequest) {
   }
 
   // Page through CIO waitlist search to collect every cio_id.
+  // Deduplicates + loop-detects (see lib/cio.ts getWaitlistSummary for
+  // the failure mode this defends against).
   const allCioIds: string[] = [];
+  const seenCioIds = new Set<string>();
   let cursor: string | undefined;
   for (let page = 0; page < 50; page++) {
     const resp = await searchWaitlistPeople(100, cursor);
+    let newOnThisPage = 0;
     for (const ident of resp.identifiers || []) {
-      if (ident.cio_id) allCioIds.push(ident.cio_id);
+      if (ident.cio_id && !seenCioIds.has(ident.cio_id)) {
+        seenCioIds.add(ident.cio_id);
+        allCioIds.push(ident.cio_id);
+        newOnThisPage++;
+      }
+    }
+    if (newOnThisPage === 0) {
+      if (page > 0) {
+        console.warn(
+          `[backfill] pagination yielded no new records on page ${page}; breaking`
+        );
+      }
+      break;
     }
     if (!resp.next) break;
     cursor = resp.next;
