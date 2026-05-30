@@ -545,7 +545,14 @@ export async function getWaitlistSummary(
   let cursor: string | undefined;
 
   for (let page = 0; page < 20; page++) {
-    const resp = await searchWaitlistPeople(100, cursor);
+    // 1000 = CIO's max per-page limit. Returns the entire waitlist in
+    // a single request for the foreseeable future (we're at ~150 today).
+    // Pagination beyond page 1 is currently broken — cursor doesn't
+    // advance — so we lean on the high per-page limit to avoid needing
+    // to paginate at all. Fix the cursor advancement before we cross
+    // 1000 records, or bump this to 2000 (which CIO also supports as
+    // the historical cap on some endpoints; verify before relying on).
+    const resp = await searchWaitlistPeople(1000, cursor);
     let newOnThisPage = 0;
     for (const ident of resp.identifiers || []) {
       if (ident.cio_id && !seenCioIds.has(ident.cio_id)) {

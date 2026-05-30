@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
   const seenCioIds = new Set<string>();
   let cursor: string | undefined;
   for (let page = 0; page < 50; page++) {
-    const resp = await searchWaitlistPeople(100, cursor);
+    const resp = await searchWaitlistPeople(1000, cursor);
     let newOnThisPage = 0;
     for (const ident of resp.identifiers || []) {
       if (ident.cio_id && !seenCioIds.has(ident.cio_id)) {

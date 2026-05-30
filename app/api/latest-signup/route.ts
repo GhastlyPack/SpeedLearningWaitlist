@@ -25,7 +25,10 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const resp = await searchWaitlistPeople(100);
+    // 1000 = CIO's max per-page limit. Captures the whole waitlist in
+    // one request well past current scale; the SignupPoller uses the
+    // count to detect new signups so it needs to see everything.
+    const resp = await searchWaitlistPeople(1000);
     const count = (resp.identifiers || []).length;
     return NextResponse.json({
       count,

@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
   let loopDetected = false;
   for (let page = 0; page < 20; page++) {
     pages = page + 1;
-    const resp = await searchWaitlistPeople(100, cursor);
+    const resp = await searchWaitlistPeople(1000, cursor);
     let newOnThisPage = 0;
     for (const ident of resp.identifiers || []) {
       if (ident.cio_id && !seenCioIds.has(ident.cio_id)) {
